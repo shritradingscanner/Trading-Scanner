@@ -1,0 +1,17 @@
+streamlit
+pandas
+numpy
+requests
+supabase
+mplfinance
+matplotlib
+Pillow
+discord-webhook
+pytz
+beautifulsoup4
+feedparser
+python-dotenv
+yfinance
+ta
+twelvedata
+alpha-vantage
