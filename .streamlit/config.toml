@@ -1,0 +1,12 @@
+[theme]
+primaryColor = "#00FF88"
+backgroundColor = "#0A0A0A"
+secondaryBackgroundColor = "#1A1A2E"
+textColor = "#FFFFFF"
+
+[server]
+maxUploadSize = 10
+enableCORS = false
+
+[browser]
+gatherUsageStats = false
