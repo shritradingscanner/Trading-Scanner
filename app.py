@@ -41,9 +41,52 @@ TICKER_MAP = {
 
 def get_data(symbol, interval="5m", period="5d"):
     try:
-        ticker = TICKER_MAP.get(symbol, symbol)
-        df = yf.download(ticker, interval=interval,
-            period=period, progress=False)
+        api_key = st.secrets["TWELVEDATA_KEY"]
+        interval_map = {
+            "5m": "5min",
+            "15m": "15min",
+            "1h": "1h",
+            "4h": "4h"
+        }
+        td_interval = interval_map.get(interval, "5min")
+        symbol_map = {
+            "XAUUSD": "XAU/USD",
+            "USDJPY": "USD/JPY",
+            "AUDCAD": "AUD/CAD",
+            "GBPJPY": "GBP/JPY",
+            "GBPUSD": "GBP/USD",
+            "EURUSD": "EUR/USD",
+            "EURJPY": "EUR/JPY",
+            "US30": "DJ30",
+            "NAS100": "NDX"
+        }
+        td_symbol = symbol_map.get(symbol, symbol)
+        url = (
+            "https://api.twelvedata.com/time_series?"
+            "symbol=" + td_symbol +
+            "&interval=" + td_interval +
+            "&outputsize=100" +
+            "&apikey=" + api_key
+        )
+        response = requests.get(url)
+        data = response.json()
+        if "values" not in data:
+            return None
+        values = data["values"]
+        df = pd.DataFrame(values)
+        df = df.rename(columns={
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "volume": "Volume"
+        })
+        df[['Open','High','Low','Close']] = df[[
+            'Open','High','Low','Close']].astype(float)
+        df = df.iloc[::-1].reset_index(drop=True)
+        return df
+    except:
+        return None
         if df is not None and len(df) > 10:
             df.columns = ['Open','High','Low','Close','Volume']
             return df
