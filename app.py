@@ -50,6 +50,7 @@ def get_data(symbol, interval="5m", period="5d"):
         }
         td_interval = interval_map.get(interval, "5min")
         symbol_map = {
+        symbol_map = {
             "XAUUSD": "XAU/USD",
             "USDJPY": "USD/JPY",
             "AUDCAD": "AUD/CAD",
@@ -57,8 +58,8 @@ def get_data(symbol, interval="5m", period="5d"):
             "GBPUSD": "GBP/USD",
             "EURUSD": "EUR/USD",
             "EURJPY": "EUR/JPY",
-            "US30": "DJ30",
-            "NAS100": "NDX"
+            "US30": "US30/USD",
+            "NAS100": "IXIC"
         }
         td_symbol = symbol_map.get(symbol, symbol)
         url = (
@@ -71,6 +72,13 @@ def get_data(symbol, interval="5m", period="5d"):
         response = requests.get(url)
         data = response.json()
         if "values" not in data:
+            ticker = TICKER_MAP.get(symbol, symbol)
+            df = yf.download(ticker, interval=interval,
+                period="5d", progress=False)
+            if df is not None and len(df) > 10:
+                df.columns = ['Open','High',
+                    'Low','Close','Volume']
+                return df
             return None
         values = data["values"]
         df = pd.DataFrame(values)
