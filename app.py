@@ -308,14 +308,26 @@ def analyze_pair(symbol):
             score += 20
             reasons.append("Bearish CHOCH")
 
-        if direction == "BUY" and 30 < rsi < 60:
+        if direction == "BUY" and rsi < 70:
             score += 10
             reasons.append("RSI Valid Zone")
-        elif direction == "SELL" and 40 < rsi < 70:
+        elif direction == "SELL" and rsi > 30:
             score += 10
             reasons.append("RSI Valid Zone")
-        elif rsi > 80 or rsi < 20:
-            negative_reasons.append("RSI Extreme")
+        if rsi > 80:
+            negative_reasons.append("RSI Overbought")
+        if rsi < 20:
+            negative_reasons.append("RSI Oversold")
+
+        if regime == "TRENDING UP" and direction == "BUY":
+            score += 10
+            reasons.append("Trend Confirmation")
+        elif regime == "TRENDING DOWN" and direction == "SELL":
+            score += 10
+            reasons.append("Trend Confirmation")
+        elif regime == "RANGING":
+            score += 5
+            reasons.append("Range Market")
 
         if direction == "BUY":
             entry = close
