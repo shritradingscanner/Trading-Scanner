@@ -76,18 +76,18 @@ def get_data_twelvedata(symbol, interval="5min"):
             "volume": "Volume"
         })
         for col in ['Open','High','Low','Close']:
-            df[col] = pd.to_numeric(df[col],
-                errors='coerce')
+            df[col] = pd.to_numeric(
+                df[col], errors='coerce')
         df = df.iloc[::-1].reset_index(drop=True)
         return df
     except Exception:
         return None
 
-def get_data_yfinance(symbol, interval="5m", period="5d"):
+def get_data_yfinance(symbol, interval="5m"):
     try:
         ticker = TICKER_MAP.get(symbol, symbol)
         df = yf.download(ticker, interval=interval,
-            period=period, progress=False)
+            period="5d", progress=False)
         if df is not None and len(df) > 10:
             df.columns = ['Open','High','Low',
                 'Close','Volume']
@@ -163,10 +163,14 @@ def detect_choch(df):
     try:
         closes = df['Close'].values
         mid = len(closes) // 2
-        first_trend = float(closes[mid]) - float(closes[0])
-        second_trend = float(closes[-1]) - float(closes[mid])
-        choch_bull = first_trend < 0 and second_trend > 0
-        choch_bear = first_trend > 0 and second_trend < 0
+        first_trend = (float(closes[mid]) -
+            float(closes[0]))
+        second_trend = (float(closes[-1]) -
+            float(closes[mid]))
+        choch_bull = (first_trend < 0
+            and second_trend > 0)
+        choch_bear = (first_trend > 0
+            and second_trend < 0)
         return choch_bull, choch_bear
     except Exception:
         return False, False
@@ -189,8 +193,10 @@ def get_htf_bias(symbol):
         df_1h = get_data(symbol, interval="1h")
         if df_1h is None or len(df_1h) < 50:
             return "NEUTRAL"
-        ma20 = float(df_1h['Close'].rolling(20).mean().iloc[-1])
-        ma50 = float(df_1h['Close'].rolling(50).mean().iloc[-1])
+        ma20 = float(
+            df_1h['Close'].rolling(20).mean().iloc[-1])
+        ma50 = float(
+            df_1h['Close'].rolling(50).mean().iloc[-1])
         current = float(df_1h['Close'].iloc[-1])
         if current > ma20 and ma20 > ma50:
             return "BULLISH"
@@ -236,13 +242,12 @@ def analyze_pair(symbol):
 
         bull_bos, bear_bos = detect_bos(df_5m)
         bull_fvg, bear_fvg = detect_fvg(df_5m)
-        bull_sweep, bear_sweep = detect_liquidity_sweep(df_5m)
+        bull_sweep, bear_sweep = detect_liquidity_sweep(
+            df_5m)
         bull_choch, bear_choch = detect_choch(df_5m)
         rsi = calculate_rsi(df_5m)
 
         close = float(df_5m['Close'].iloc[-1])
-        high = float(df_5m['High'].iloc[-1])
-        low = float(df_5m['Low'].iloc[-1])
         highs = df_5m['High'].values.astype(float)
         lows = df_5m['Low'].values.astype(float)
         atr = float(np.mean(highs[-14:] - lows[-14:]))
@@ -262,7 +267,7 @@ def analyze_pair(symbol):
             elif htf_bias == "BEARISH":
                 direction = "SELL"
             else:
-                return None
+                direction = "BUY"
         else:
             return None
 
@@ -272,32 +277,35 @@ def analyze_pair(symbol):
         elif htf_bias == "BEARISH" and direction == "SELL":
             score += 20
             reasons.append("HTF Bearish Alignment")
+        elif htf_bias == "NEUTRAL":
+            score += 10
+            reasons.append("HTF Neutral")
         else:
             negative_reasons.append("HTF Conflict")
 
         if bull_bos and direction == "BUY":
-            score += 20
+            score += 25
             reasons.append("Bullish BOS")
         if bear_bos and direction == "SELL":
-            score += 20
+            score += 25
             reasons.append("Bearish BOS")
         if bull_fvg and direction == "BUY":
-            score += 15
+            score += 20
             reasons.append("Bullish FVG")
         if bear_fvg and direction == "SELL":
-            score += 15
+            score += 20
             reasons.append("Bearish FVG")
         if bull_sweep and direction == "BUY":
-            score += 20
+            score += 25
             reasons.append("Bullish Liquidity Sweep")
         if bear_sweep and direction == "SELL":
-            score += 20
+            score += 25
             reasons.append("Bearish Liquidity Sweep")
         if bull_choch and direction == "BUY":
-            score += 15
+            score += 20
             reasons.append("Bullish CHOCH")
         if bear_choch and direction == "SELL":
-            score += 15
+            score += 20
             reasons.append("Bearish CHOCH")
 
         if direction == "BUY" and 30 < rsi < 60:
@@ -318,8 +326,8 @@ def analyze_pair(symbol):
             sl = close + (atr * 1.5)
             tp = close - (atr * 3)
 
-        rr = abs(tp - entry) / abs(sl - entry) if abs(
-            sl - entry) > 0 else 2.0
+        rr = (abs(tp - entry) / abs(sl - entry)
+            if abs(sl - entry) > 0 else 2.0)
 
         return {
             "pair": symbol,
@@ -408,7 +416,8 @@ def show_login_page():
                     st.session_state.user_email = email
                     st.rerun()
                 else:
-                    st.error("Please enter email and password!")
+                    st.error(
+                        "Please enter email and password!")
         with tab2:
             new_email = st.text_input("Email",
                 key="signup_email")
@@ -575,8 +584,8 @@ def show_signals_page():
     st.title("📊 Active Signals")
     if not st.session_state.signals:
         st.info(
-            "No signals yet! "
-            "Go to Dashboard and click Scan Now!")
+            "No signals yet! Go to Dashboard "
+            "and click Scan Now!")
         return
 
     high = [s for s in st.session_state.signals
@@ -612,7 +621,7 @@ def show_signals_page():
                         ", ".join(signal['negative']))
 
     if medium:
-        st.subheader("🟡 Medium (60-80%)")
+        st.subheader("🟡 Medium Confidence (60-80%)")
         for signal in medium:
             with st.expander(
                 "🟡 " + signal['pair'] + " " +
@@ -625,6 +634,9 @@ def show_signals_page():
                     st.metric("SL", signal['sl'])
                 with col3:
                     st.metric("TP", signal['tp'])
+                st.write("RR: 1:" + str(signal['rr']))
+                st.write("Reasons: " +
+                    ", ".join(signal['reasons']))
 
     if low:
         st.subheader("🔴 Low Confidence")
@@ -645,12 +657,14 @@ def show_settings_page():
         if success:
             st.success("Discord alert sent!")
         else:
-            st.error("Discord failed! Check webhook URL!")
+            st.error(
+                "Discord failed! Check webhook URL!")
 
     st.divider()
     st.subheader("📊 Scanner Info")
     st.info("Min Confidence: 80%")
-    st.info("Pairs: XAUUSD, USDJPY, AUDCAD, GBPJPY, GBPUSD, EURUSD, EURJPY, US30, NAS100")
+    st.info("Pairs: XAUUSD, USDJPY, AUDCAD, "
+        "GBPJPY, GBPUSD, EURUSD, EURJPY, US30, NAS100")
     st.info("Analysis: SMC + ICT + Multi Timeframe")
     st.info("Data: Twelve Data + yfinance backup")
 
