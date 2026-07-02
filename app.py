@@ -1,10 +1,11 @@
-import streamlit as st
+ximport streamlit as st
 import pytz
 import requests
 from datetime import datetime
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import time
 
 st.set_page_config(
     page_title="AI Trading Scanner",
@@ -360,6 +361,25 @@ def analyze_pair(symbol):
     except Exception:
         return None
 
+def run_scan():
+    pairs = [
+        "XAUUSD","USDJPY","AUDCAD",
+        "GBPJPY","GBPUSD","EURUSD",
+        "EURJPY","US30","NAS100"
+    ]
+    found_signals = []
+    for pair in pairs:
+        result = analyze_pair(pair)
+        if result:
+            found_signals.append(result)
+            if result['score'] >= 80:
+                msg = format_discord_message(result)
+                send_discord_alert(msg)
+                st.session_state.alerts_sent += 1
+    st.session_state.signals = found_signals
+    st.session_state.total_scans += 1
+    st.session_state.last_scan_time = get_ist_time()
+
 def format_discord_message(signal):
     grade = ("A+" if signal['score'] >= 90 else
              "A" if signal['score'] >= 80 else
@@ -402,12 +422,31 @@ if 'alerts_sent' not in st.session_state:
     st.session_state.alerts_sent = 0
 if 'total_scans' not in st.session_state:
     st.session_state.total_scans = 0
+if 'last_scan_time' not in st.session_state:
+    st.session_state.last_scan_time = None
+if 'next_scan_seconds' not in st.session_state:
+    st.session_state.next_scan_seconds = 300
 
 def main():
     if not st.session_state.logged_in:
         show_login_page()
     else:
+        if st.session_state.scanner_running:
+            auto_scan()
         show_dashboard()
+
+def auto_scan():
+    try:
+        now = get_ist_time()
+        if st.session_state.last_scan_time is None:
+            run_scan()
+            return
+        elapsed = (now -
+            st.session_state.last_scan_time).seconds
+        if elapsed >= st.session_state.next_scan_seconds:
+            run_scan()
+    except Exception:
+        pass
 
 def show_login_page():
     st.title("📈 AI Trading Scanner")
@@ -502,9 +541,11 @@ def show_main_dashboard():
                 use_container_width=True,
                 type="primary"):
                 st.session_state.scanner_running = True
+                st.session_state.last_scan_time = None
                 send_discord_alert(
                     "🟢 **AI Trading Scanner STARTED!**\n"
-                    "Scanning 9 pairs with SMC/ICT\n"
+                    "Auto scanning every 5 minutes\n"
+                    "9 pairs with SMC/ICT Analysis\n"
                     "Min confidence: 80%\n"
                     "Time: " + get_ist_time().strftime(
                         '%d %b %Y %H:%M IST'))
@@ -542,43 +583,27 @@ def show_main_dashboard():
     st.divider()
 
     if st.session_state.scanner_running:
-        st.subheader("📡 Scanner Active")
-        if st.button("🔄 SCAN ALL PAIRS NOW",
-            type="primary",
-            use_container_width=True):
-            pairs = [
-                "XAUUSD","USDJPY","AUDCAD",
-                "GBPJPY","GBPUSD","EURUSD",
-                "EURJPY","US30","NAS100"
-            ]
-            progress = st.progress(0)
-            status = st.empty()
-            found_signals = []
+        if st.session_state.last_scan_time:
+            st.info("Last scan: " +
+                st.session_state.last_scan_time.strftime(
+                    '%H:%M:%S IST') +
+                " | Next scan in 5 minutes")
+        else:
+            st.info("Starting first scan...")
 
-            for idx, pair in enumerate(pairs):
-                status.write("Analyzing " + pair + "...")
-                progress.progress((idx+1)/len(pairs))
-                result = analyze_pair(pair)
-                if result:
-                    found_signals.append(result)
-                    if result['score'] >= 80:
-                        msg = format_discord_message(result)
-                        send_discord_alert(msg)
-                        st.session_state.alerts_sent += 1
-
-            st.session_state.signals = found_signals
-            st.session_state.total_scans += 1
-            progress.empty()
-            status.empty()
-
-            high_conf = [s for s in found_signals
-                if s['score'] >= 80]
-            st.success(
-                "Scan Complete! Found " +
-                str(len(found_signals)) +
-                " setups. High Confidence (80%+): " +
-                str(len(high_conf)))
-            st.rerun()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 SCAN NOW",
+                type="primary",
+                use_container_width=True):
+                with st.spinner("Scanning all pairs..."):
+                    run_scan()
+                st.success("Scan complete!")
+                st.rerun()
+        with col2:
+            if st.button("🔃 REFRESH PAGE",
+                use_container_width=True):
+                st.rerun()
 
     st.divider()
     st.subheader("📡 Pairs Being Scanned")
@@ -592,12 +617,16 @@ def show_main_dashboard():
         with cols[i % 3]:
             st.info(pair)
 
+    if st.session_state.scanner_running:
+        time.sleep(1)
+        st.rerun()
+
 def show_signals_page():
     st.title("📊 Active Signals")
     if not st.session_state.signals:
         st.info(
-            "No signals yet! Go to Dashboard "
-            "and click Scan Now!")
+            "No signals yet! "
+            "Go to Dashboard and start scanner!")
         return
 
     high = [s for s in st.session_state.signals
@@ -673,12 +702,29 @@ def show_settings_page():
                 "Discord failed! Check webhook URL!")
 
     st.divider()
+    st.subheader("⏱️ Auto Scan Settings")
+    scan_interval = st.selectbox(
+        "Scan Interval",
+        [1, 2, 3, 5, 10, 15],
+        index=3
+    )
+    if st.button("Save Scan Interval"):
+        st.session_state.next_scan_seconds = (
+            scan_interval * 60)
+        st.success(
+            "Scan interval set to " +
+            str(scan_interval) + " minutes!")
+
+    st.divider()
     st.subheader("📊 Scanner Info")
     st.info("Min Confidence: 80%")
     st.info("Pairs: XAUUSD, USDJPY, AUDCAD, "
         "GBPJPY, GBPUSD, EURUSD, EURJPY, US30, NAS100")
     st.info("Analysis: SMC + ICT + Multi Timeframe")
     st.info("Data: Twelve Data + yfinance backup")
+    st.info("Auto Scan: Every " +
+        str(st.session_state.next_scan_seconds // 60) +
+        " minutes")
 
 if __name__ == "__main__":
     main()
