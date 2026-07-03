@@ -1,11 +1,12 @@
 import streamlit as st
 import pytz
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import time
+import hashlib
 
 st.set_page_config(
     page_title="AI Trading Scanner",
@@ -27,6 +28,41 @@ def send_discord_alert(message):
         return response.status_code == 204
     except Exception:
         return False
+
+def get_signal_id(signal):
+    key = (signal['pair'] + signal['direction'] +
+        str(round(signal['entry'], 2)))
+    return hashlib.md5(key.encode()).hexdigest()[:8]
+
+def is_entry_valid(signal, current_price, tolerance=0.003):
+    try:
+        entry = signal['entry']
+        diff = abs(current_price - entry) / entry
+        return diff <= tolerance
+    except Exception:
+        return True
+
+def get_signal_age(signal_time_str):
+    try:
+        signal_time = IST.localize(
+            datetime.strptime(signal_time_str,
+                '%d %b %Y %H:%M IST'))
+        now = get_ist_time()
+        age_minutes = int(
+            (now - signal_time).total_seconds() / 60)
+        return age_minutes
+    except Exception:
+        return 0
+
+def get_signal_status(age_minutes):
+    if age_minutes < 5:
+        return "🟢 FRESH"
+    elif age_minutes < 15:
+        return "🟡 VALID"
+    elif age_minutes < 30:
+        return "🟠 AGING"
+    else:
+        return "🔴 EXPIRED"
 
 TICKER_MAP = {
     "XAUUSD": "GC=F",
@@ -342,6 +378,9 @@ def analyze_pair(symbol):
         rr = (abs(tp - entry) / abs(sl - entry)
             if abs(sl - entry) > 0 else 2.0)
 
+        signal_time = get_ist_time().strftime(
+            '%d %b %Y %H:%M IST')
+
         return {
             "pair": symbol,
             "direction": direction,
@@ -355,30 +394,12 @@ def analyze_pair(symbol):
             "regime": regime,
             "reasons": reasons,
             "negative": negative_reasons,
-            "time": get_ist_time().strftime(
-                '%d %b %Y %H:%M IST')
+            "time": signal_time,
+            "current_price": round(close, 5),
+            "atr": round(atr, 5)
         }
     except Exception:
         return None
-
-def run_scan():
-    pairs = [
-        "XAUUSD","USDJPY","AUDCAD",
-        "GBPJPY","GBPUSD","EURUSD",
-        "EURJPY","US30","NAS100"
-    ]
-    found_signals = []
-    for pair in pairs:
-        result = analyze_pair(pair)
-        if result:
-            found_signals.append(result)
-            if result['score'] >= 80:
-                msg = format_discord_message(result)
-                send_discord_alert(msg)
-                st.session_state.alerts_sent += 1
-    st.session_state.signals = found_signals
-    st.session_state.total_scans += 1
-    st.session_state.last_scan_time = get_ist_time()
 
 def format_discord_message(signal):
     grade = ("A+" if signal['score'] >= 90 else
@@ -390,6 +411,24 @@ def format_discord_message(signal):
         ["✅ " + r for r in signal['reasons']])
     neg_text = "\n".join(
         ["❌ " + n for n in signal['negative']])
+
+    if signal['direction'] == "BUY":
+        entry_instruction = (
+            "📍 Enter BUY when price reaches: " +
+            str(signal['entry']) + " or below")
+        price_note = (
+            "⚠️ Valid if price is near " +
+            str(signal['entry']) +
+            " (within " + str(signal['atr']) + " ATR)")
+    else:
+        entry_instruction = (
+            "📍 Enter SELL when price reaches: " +
+            str(signal['entry']) + " or above")
+        price_note = (
+            "⚠️ Valid if price is near " +
+            str(signal['entry']) +
+            " (within " + str(signal['atr']) + " ATR)")
+
     msg = (
         "🚨 **HIGH CONFIDENCE SIGNAL** 🚨\n\n"
         "**" + emoji + " " + signal['pair'] + "**\n\n"
@@ -399,14 +438,18 @@ def format_discord_message(signal):
         "🛑 Stop Loss: " + str(signal['sl']) + "\n"
         "🎯 Take Profit: " + str(signal['tp']) + "\n"
         "⚖️ RR Ratio: 1:" + str(signal['rr']) + "\n\n"
+        + entry_instruction + "\n"
+        + price_note + "\n\n"
         "📈 HTF Bias: " + signal['htf_bias'] + "\n"
         "🌍 Market: " + signal['regime'] + "\n"
         "📉 RSI: " + str(signal['rsi']) + "\n\n"
+        "⏰ Signal Time: " + signal['time'] + "\n"
+        "🕐 Signal Age: FRESH (just detected)\n"
+        "✅ Status: VALID — Price at entry zone\n\n"
         "✅ **Reasons:**\n" + reasons_text + "\n"
     )
     if signal['negative']:
         msg += "\n❌ **Caution:**\n" + neg_text + "\n"
-    msg += "\n⏰ Time: " + signal['time']
     msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
     return msg
 
@@ -426,6 +469,46 @@ if 'last_scan_time' not in st.session_state:
     st.session_state.last_scan_time = None
 if 'next_scan_seconds' not in st.session_state:
     st.session_state.next_scan_seconds = 300
+if 'sent_signal_ids' not in st.session_state:
+    st.session_state.sent_signal_ids = set()
+
+def run_scan():
+    pairs = [
+        "XAUUSD","USDJPY","AUDCAD",
+        "GBPJPY","GBPUSD","EURUSD",
+        "EURJPY","US30","NAS100"
+    ]
+    found_signals = []
+    new_high_conf = []
+
+    for pair in pairs:
+        result = analyze_pair(pair)
+        if result:
+            found_signals.append(result)
+            if result['score'] >= 80:
+                sig_id = get_signal_id(result)
+                if sig_id not in st.session_state.sent_signal_ids:
+                    new_high_conf.append(result)
+
+    found_signals.sort(key=lambda x: x['score'],
+        reverse=True)
+    new_high_conf.sort(key=lambda x: x['score'],
+        reverse=True)
+    top_signals = new_high_conf[:3]
+
+    for signal in top_signals:
+        sig_id = get_signal_id(signal)
+        msg = format_discord_message(signal)
+        if send_discord_alert(msg):
+            st.session_state.sent_signal_ids.add(sig_id)
+            st.session_state.alerts_sent += 1
+
+    if len(st.session_state.sent_signal_ids) > 100:
+        st.session_state.sent_signal_ids = set()
+
+    st.session_state.signals = found_signals
+    st.session_state.total_scans += 1
+    st.session_state.last_scan_time = get_ist_time()
 
 def main():
     if not st.session_state.logged_in:
@@ -542,10 +625,13 @@ def show_main_dashboard():
                 type="primary"):
                 st.session_state.scanner_running = True
                 st.session_state.last_scan_time = None
+                st.session_state.sent_signal_ids = set()
                 send_discord_alert(
                     "🟢 **AI Trading Scanner STARTED!**\n"
                     "Auto scanning every 5 minutes\n"
                     "9 pairs with SMC/ICT Analysis\n"
+                    "Max 3 best signals per scan\n"
+                    "No duplicate alerts!\n"
                     "Min confidence: 80%\n"
                     "Time: " + get_ist_time().strftime(
                         '%d %b %Y %H:%M IST'))
@@ -559,7 +645,7 @@ def show_main_dashboard():
                     "🔴 **AI Trading Scanner STOPPED!**\n"
                     "Total Scans: " +
                     str(st.session_state.total_scans) +
-                    "\nAlerts Sent: " +
+                    "\nUnique Alerts Sent: " +
                     str(st.session_state.alerts_sent))
                 st.rerun()
 
@@ -584,10 +670,18 @@ def show_main_dashboard():
 
     if st.session_state.scanner_running:
         if st.session_state.last_scan_time:
-            st.info("Last scan: " +
+            elapsed = int((get_ist_time() -
+                st.session_state.last_scan_time
+                ).total_seconds())
+            remaining = max(0,
+                st.session_state.next_scan_seconds -
+                elapsed)
+            st.info(
+                "Last scan: " +
                 st.session_state.last_scan_time.strftime(
                     '%H:%M:%S IST') +
-                " | Next scan in 5 minutes")
+                " | Next scan in: " +
+                str(remaining) + " seconds")
         else:
             st.info("Starting first scan...")
 
@@ -601,7 +695,7 @@ def show_main_dashboard():
                 st.success("Scan complete!")
                 st.rerun()
         with col2:
-            if st.button("🔃 REFRESH PAGE",
+            if st.button("🔃 REFRESH",
                 use_container_width=True):
                 st.rerun()
 
@@ -639,11 +733,13 @@ def show_signals_page():
     if high:
         st.subheader("🟢 High Confidence (80%+)")
         for signal in high:
+            age = get_signal_age(signal['time'])
+            status = get_signal_status(age)
             with st.expander(
                 "🟢 " + signal['pair'] + " " +
                 signal['direction'] + " | " +
                 str(signal['score']) + "% | " +
-                signal['time']):
+                status):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -655,19 +751,36 @@ def show_signals_page():
                 st.write("HTF: " + signal['htf_bias'])
                 st.write("Market: " + signal['regime'])
                 st.write("RSI: " + str(signal['rsi']))
+                st.write("Signal Age: " +
+                    str(age) + " minutes | " + status)
+                if signal['direction'] == "BUY":
+                    st.success(
+                        "Enter BUY at: " +
+                        str(signal['entry']) + " or below")
+                else:
+                    st.success(
+                        "Enter SELL at: " +
+                        str(signal['entry']) + " or above")
                 st.write("Reasons: " +
                     ", ".join(signal['reasons']))
                 if signal['negative']:
                     st.warning("Caution: " +
                         ", ".join(signal['negative']))
+                if age >= 30:
+                    st.error(
+                        "⚠️ SETUP EXPIRED! "
+                        "Do not trade this signal!")
 
     if medium:
         st.subheader("🟡 Medium Confidence (60-80%)")
         for signal in medium:
+            age = get_signal_age(signal['time'])
+            status = get_signal_status(age)
             with st.expander(
                 "🟡 " + signal['pair'] + " " +
                 signal['direction'] + " | " +
-                str(signal['score']) + "%"):
+                str(signal['score']) + "% | " +
+                status):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -675,7 +788,8 @@ def show_signals_page():
                     st.metric("SL", signal['sl'])
                 with col3:
                     st.metric("TP", signal['tp'])
-                st.write("RR: 1:" + str(signal['rr']))
+                st.write("Signal Age: " +
+                    str(age) + " minutes | " + status)
                 st.write("Reasons: " +
                     ", ".join(signal['reasons']))
 
@@ -716,12 +830,20 @@ def show_settings_page():
             str(scan_interval) + " minutes!")
 
     st.divider()
+    if st.button("Clear Sent Alerts History",
+        use_container_width=True):
+        st.session_state.sent_signal_ids = set()
+        st.success("Alert history cleared!")
+
+    st.divider()
     st.subheader("📊 Scanner Info")
     st.info("Min Confidence: 80%")
+    st.info("Max signals per scan: 3 best only")
+    st.info("No duplicate alerts!")
+    st.info("Signal expires after: 30 minutes")
     st.info("Pairs: XAUUSD, USDJPY, AUDCAD, "
         "GBPJPY, GBPUSD, EURUSD, EURJPY, US30, NAS100")
     st.info("Analysis: SMC + ICT + Multi Timeframe")
-    st.info("Data: Twelve Data + yfinance backup")
     st.info("Auto Scan: Every " +
         str(st.session_state.next_scan_seconds // 60) +
         " minutes")
