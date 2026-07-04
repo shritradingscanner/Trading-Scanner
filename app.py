@@ -10,10 +10,8 @@ import hashlib
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyArrowPatch
 import io
-import base64
+import json
 
 st.set_page_config(
     page_title="AI Trading Scanner",
@@ -371,7 +369,6 @@ def calculate_structure_sl(df, direction, atr):
     try:
         highs = df['High'].values.astype(float)
         lows = df['Low'].values.astype(float)
-        close = float(df['Close'].iloc[-1])
         if direction == "BUY":
             recent_low = float(min(lows[-10:]))
             sl = recent_low - (atr * 0.5)
@@ -386,18 +383,16 @@ def calculate_structure_sl(df, direction, atr):
         else:
             return round(close + atr * 2, 5)
 
-def generate_chart(df, signal, fvg_zones, ob_found,
-    ob_top, ob_bottom, ob_index,
+def generate_chart(df, signal, fvg_zones,
+    ob_found, ob_top, ob_bottom, ob_index,
     bull_bos, bear_bos, bull_choch, bear_choch,
     bull_sweep, bear_sweep):
     try:
         fig, ax = plt.subplots(figsize=(14, 8))
         fig.patch.set_facecolor('#0A0A0A')
         ax.set_facecolor('#0A0A0A')
-
         display_df = df.tail(50).reset_index(drop=True)
         n = len(display_df)
-
         for i in range(n):
             o = float(display_df['Open'].iloc[i])
             h = float(display_df['High'].iloc[i])
@@ -410,7 +405,6 @@ def generate_chart(df, signal, fvg_zones, ob_found,
                 (i - 0.3, min(o, c)),
                 0.6, abs(c - o),
                 color=color, alpha=0.9))
-
         for fvg in fvg_zones:
             try:
                 fvg_x = fvg.get('index', n-5) - (
@@ -434,12 +428,10 @@ def generate_chart(df, signal, fvg_zones, ob_found,
                         else 'FVG Bear')
                     ax.text(fvg_x + 0.5,
                         fvg['top'], label,
-                        color=border,
-                        fontsize=7,
+                        color=border, fontsize=7,
                         fontweight='bold')
             except Exception:
                 pass
-
         if ob_found:
             ob_x = ob_index - (len(df) - n)
             if 0 <= ob_x < n:
@@ -457,10 +449,9 @@ def generate_chart(df, signal, fvg_zones, ob_found,
                     linewidth=2,
                     edgecolor=ob_border,
                     linestyle='--'))
-                ax.text(ob_x + 0.5, ob_top,
-                    'OB', color=ob_border,
-                    fontsize=8, fontweight='bold')
-
+                ax.text(ob_x + 0.5, ob_top, 'OB',
+                    color=ob_border, fontsize=8,
+                    fontweight='bold')
         if bull_bos or bear_bos:
             bos_price = (float(max(
                 df['High'].values[-40:-20]))
@@ -473,7 +464,6 @@ def generate_chart(df, signal, fvg_zones, ob_found,
             ax.text(2, bos_price, bos_label,
                 color=bos_color, fontsize=8,
                 fontweight='bold')
-
         if bull_sweep or bear_sweep:
             sweep_price = (float(min(
                 df['Low'].values[-30:-5]))
@@ -481,94 +471,68 @@ def generate_chart(df, signal, fvg_zones, ob_found,
                 df['High'].values[-30:-5])))
             sweep_color = '#00FF88' if bull_sweep else '#FF4444'
             ax.axhline(y=sweep_price,
-                color=sweep_color,
-                linewidth=1.5,
-                linestyle=':',
-                alpha=0.8)
-            ax.text(2, sweep_price,
-                'Liquidity Sweep',
-                color=sweep_color,
-                fontsize=8,
+                color=sweep_color, linewidth=1.5,
+                linestyle=':', alpha=0.8)
+            ax.text(2, sweep_price, 'Liq Sweep',
+                color=sweep_color, fontsize=8,
                 fontweight='bold')
-
         entry = signal['entry']
         sl = signal['sl']
         tp = signal['tp']
-        direction = signal['direction']
-
         ax.axhline(y=entry, color='#FFFFFF',
             linewidth=2, linestyle='-', alpha=0.9)
-        ax.text(n + 0.5, entry, 'ENTRY',
+        ax.text(n + 0.3, entry, 'ENTRY',
             color='#FFFFFF', fontsize=9,
             fontweight='bold')
-
         ax.axhline(y=sl, color='#FF4444',
             linewidth=2, linestyle='-', alpha=0.9)
-        ax.text(n + 0.5, sl, 'SL',
+        ax.text(n + 0.3, sl, 'SL',
             color='#FF4444', fontsize=9,
             fontweight='bold')
-
         ax.axhline(y=tp, color='#00FF88',
             linewidth=2, linestyle='-', alpha=0.9)
-        ax.text(n + 0.5, tp, 'TP',
+        ax.text(n + 0.3, tp, 'TP',
             color='#00FF88', fontsize=9,
             fontweight='bold')
-
-        if direction == "BUY":
-            tp_rect = plt.Rectangle(
+        if signal['direction'] == "BUY":
+            ax.add_patch(plt.Rectangle(
                 (0, entry), n, tp - entry,
-                color='#00FF8822', linewidth=0)
-            sl_rect = plt.Rectangle(
+                color='#00FF8822', linewidth=0))
+            ax.add_patch(plt.Rectangle(
                 (0, sl), n, entry - sl,
-                color='#FF444422', linewidth=0)
+                color='#FF444422', linewidth=0))
         else:
-            tp_rect = plt.Rectangle(
+            ax.add_patch(plt.Rectangle(
                 (0, tp), n, entry - tp,
-                color='#00FF8822', linewidth=0)
-            sl_rect = plt.Rectangle(
+                color='#00FF8822', linewidth=0))
+            ax.add_patch(plt.Rectangle(
                 (0, entry), n, sl - entry,
-                color='#FF444422', linewidth=0)
-        ax.add_patch(tp_rect)
-        ax.add_patch(sl_rect)
-
+                color='#FF444422', linewidth=0))
         grade = ("A+" if signal['score'] >= 90 else
                  "A" if signal['score'] >= 80 else
                  "B" if signal['score'] >= 70 else "C")
-
         title = (signal['pair'] + " " +
             signal['direction'] + " | " +
             str(signal['score']) + "% | Grade: " +
             grade + " | " + signal['session'])
-        ax.set_title(title,
-            color='#FFFFFF', fontsize=14,
-            fontweight='bold', pad=15)
-
+        ax.set_title(title, color='#FFFFFF',
+            fontsize=14, fontweight='bold', pad=15)
         reasons_text = " | ".join(signal['reasons'][:4])
         fig.text(0.5, 0.02, reasons_text,
-            ha='center', color='#AAAAAA',
-            fontsize=9)
-
+            ha='center', color='#AAAAAA', fontsize=9)
         info_text = (
             "Entry: " + str(entry) +
-            "  |  SL: " + str(sl) +
-            "  |  TP: " + str(tp) +
-            "  |  RR: 1:" + str(signal['rr']) +
-            "  |  RSI: " + str(signal['rsi']) +
-            "  |  HTF: " + signal['htf_bias'])
+            "  SL: " + str(sl) +
+            "  TP: " + str(tp) +
+            "  RR: 1:" + str(signal['rr']) +
+            "  RSI: " + str(signal['rsi']) +
+            "  HTF: " + signal['htf_bias'])
         fig.text(0.5, 0.96, info_text,
-            ha='center', color='#CCCCCC',
-            fontsize=9)
-
+            ha='center', color='#CCCCCC', fontsize=9)
         ax.tick_params(colors='#AAAAAA')
-        ax.spines['bottom'].set_color('#333333')
-        ax.spines['top'].set_color('#333333')
-        ax.spines['left'].set_color('#333333')
-        ax.spines['right'].set_color('#333333')
-        ax.yaxis.label.set_color('#AAAAAA')
-        ax.xaxis.label.set_color('#AAAAAA')
-
+        for spine in ax.spines.values():
+            spine.set_color('#333333')
         plt.tight_layout(rect=[0, 0.05, 1, 0.95])
-
         buf = io.BytesIO()
         plt.savefig(buf, format='png', dpi=150,
             bbox_inches='tight',
@@ -584,37 +548,29 @@ def analyze_pair(symbol):
     try:
         if not is_trading_session():
             return None
-
         df_5m = get_data(symbol, interval="5m")
         if df_5m is None or len(df_5m) < 50:
             return None
-
         score = 0
         reasons = []
         negative_reasons = []
         confluences = 0
-
         htf_bias = get_htf_bias(symbol)
         regime = detect_market_regime(df_5m)
         session = get_current_session()
-
         bull_bos, bear_bos = detect_bos(df_5m)
         bull_fvg, bear_fvg, fvg_zones = detect_fvg(df_5m)
-        bull_sweep, bear_sweep = detect_liquidity_sweep(
-            df_5m)
+        bull_sweep, bear_sweep = detect_liquidity_sweep(df_5m)
         bull_choch, bear_choch = detect_choch(df_5m)
         rsi = calculate_rsi(df_5m)
-
         close = float(df_5m['Close'].iloc[-1])
         highs = df_5m['High'].values.astype(float)
         lows = df_5m['Low'].values.astype(float)
         atr = float(np.mean(highs[-14:] - lows[-14:]))
-
         is_bullish = (bull_bos or bull_fvg
             or bull_sweep or bull_choch)
         is_bearish = (bear_bos or bear_fvg
             or bear_sweep or bear_choch)
-
         if is_bullish and not is_bearish:
             direction = "BUY"
         elif is_bearish and not is_bullish:
@@ -628,12 +584,10 @@ def analyze_pair(symbol):
                 return None
         else:
             return None
-
         ob_found, ob_top, ob_bottom, ob_index = (
             detect_order_block(df_5m, direction))
         in_pd_zone = is_price_in_premium_discount(
             df_5m, direction)
-
         if htf_bias == "BULLISH" and direction == "BUY":
             score += 20
             reasons.append("HTF Bullish Alignment")
@@ -648,7 +602,6 @@ def analyze_pair(symbol):
         else:
             score -= 10
             negative_reasons.append("HTF Conflict")
-
         if bull_bos and direction == "BUY":
             score += 20
             reasons.append("Bullish BOS")
@@ -689,7 +642,6 @@ def analyze_pair(symbol):
             score += 10
             reasons.append("Premium/Discount Zone")
             confluences += 1
-
         if direction == "BUY" and 30 < rsi < 60:
             score += 10
             reasons.append("RSI Bullish Zone")
@@ -702,7 +654,6 @@ def analyze_pair(symbol):
         elif rsi < 15:
             score -= 10
             negative_reasons.append("RSI Oversold")
-
         if regime == "TRENDING UP" and direction == "BUY":
             score += 10
             reasons.append("Trend Confirmation")
@@ -715,7 +666,6 @@ def analyze_pair(symbol):
         elif regime == "RANGING":
             score -= 5
             negative_reasons.append("Ranging Market")
-
         if session in ["London", "New York",
             "London + NY Overlap"]:
             score += 5
@@ -723,24 +673,19 @@ def analyze_pair(symbol):
         else:
             score -= 15
             negative_reasons.append("Off-Peak Session")
-
         if confluences < 3:
             return None
-
         score = min(score, 95)
         score = max(score, 0)
-
         sl = calculate_structure_sl(df_5m, direction, atr)
         sl_distance = abs(close - sl)
-
         if direction == "BUY":
             entry = close
             tp = round(entry + (sl_distance * 2), 5)
         else:
             entry = close
             tp = round(entry - (sl_distance * 2), 5)
-
-        signal = {
+        return {
             "pair": symbol,
             "direction": direction,
             "score": score,
@@ -772,7 +717,6 @@ def analyze_pair(symbol):
             "bull_sweep": bull_sweep,
             "bear_sweep": bear_sweep
         }
-        return signal
     except Exception:
         return None
 
@@ -786,7 +730,6 @@ def format_discord_message(signal):
         ["✅ " + r for r in signal['reasons']])
     neg_text = "\n".join(
         ["❌ " + n for n in signal['negative']])
-
     if signal['direction'] == "BUY":
         entry_instruction = (
             "📍 **Enter BUY at or below: " +
@@ -795,14 +738,13 @@ def format_discord_message(signal):
         entry_instruction = (
             "📍 **Enter SELL at or above: " +
             str(signal['entry']) + "**")
-
     msg = (
         "🚨 **HIGH CONFIDENCE SIGNAL** 🚨\n\n"
         "**" + emoji + " " + signal['pair'] + "**\n\n"
         "📊 Confidence: " + str(signal['score']) + "%\n"
         "🏆 Grade: " + grade + "\n"
-        "🔗 Confluences: " + str(signal['confluences']) +
-        " factors\n\n"
+        "🔗 Confluences: " +
+        str(signal['confluences']) + "\n\n"
         + entry_instruction + "\n"
         "💰 Entry: " + str(signal['entry']) + "\n"
         "🛑 Stop Loss: " + str(signal['sl']) + "\n"
@@ -812,11 +754,9 @@ def format_discord_message(signal):
         "🌍 Market: " + signal['regime'] + "\n"
         "🕐 Session: " + signal['session'] + "\n"
         "📉 RSI: " + str(signal['rsi']) + "\n\n"
-        "⏰ Signal Time: " + signal['time'] + "\n"
-        "🟢 Status: FRESH — Enter Now!\n\n"
-        "⚠️ Only enter if price near " +
-        str(signal['entry']) + "\n"
-        "Skip if price moved more than " +
+        "⏰ Time: " + signal['time'] + "\n"
+        "🟢 Status: FRESH\n\n"
+        "⚠️ Skip if price moved more than " +
         str(signal['atr']) + " away!\n\n"
         "✅ **Reasons:**\n" + reasons_text + "\n"
     )
@@ -824,6 +764,77 @@ def format_discord_message(signal):
         msg += "\n❌ **Caution:**\n" + neg_text + "\n"
     msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
     return msg
+
+def add_to_journal(signal):
+    journal_entry = {
+        "id": get_signal_id(signal),
+        "pair": signal['pair'],
+        "direction": signal['direction'],
+        "score": signal['score'],
+        "entry": signal['entry'],
+        "sl": signal['sl'],
+        "tp": signal['tp'],
+        "rr": signal['rr'],
+        "rsi": signal['rsi'],
+        "htf_bias": signal['htf_bias'],
+        "regime": signal['regime'],
+        "session": signal['session'],
+        "confluences": signal['confluences'],
+        "reasons": signal['reasons'],
+        "time": signal['time'],
+        "result": "Pending",
+        "pnl": 0
+    }
+    existing_ids = [j['id'] for j in
+        st.session_state.trade_journal]
+    if journal_entry['id'] not in existing_ids:
+        st.session_state.trade_journal.append(
+            journal_entry)
+
+def calculate_stats():
+    journal = st.session_state.trade_journal
+    if not journal:
+        return {
+            "total": 0,
+            "wins": 0,
+            "losses": 0,
+            "pending": 0,
+            "win_rate": 0,
+            "best_pair": "N/A",
+            "best_session": "N/A"
+        }
+    completed = [j for j in journal
+        if j['result'] != "Pending"]
+    wins = [j for j in completed
+        if j['result'] == "TP Hit"]
+    losses = [j for j in completed
+        if j['result'] == "SL Hit"]
+    pending = [j for j in journal
+        if j['result'] == "Pending"]
+    win_rate = (len(wins) / len(completed) * 100
+        if completed else 0)
+    pair_wins = {}
+    for j in wins:
+        pair_wins[j['pair']] = (
+            pair_wins.get(j['pair'], 0) + 1)
+    best_pair = (max(pair_wins, key=pair_wins.get)
+        if pair_wins else "N/A")
+    session_wins = {}
+    for j in wins:
+        session_wins[j['session']] = (
+            session_wins.get(j['session'], 0) + 1)
+    best_session = (max(session_wins,
+        key=session_wins.get)
+        if session_wins else "N/A")
+    return {
+        "total": len(journal),
+        "wins": len(wins),
+        "losses": len(losses),
+        "pending": len(pending),
+        "win_rate": round(win_rate, 1),
+        "best_pair": best_pair,
+        "best_session": best_session
+    }
 
 if 'scanner_running' not in st.session_state:
     st.session_state.scanner_running = False
@@ -843,6 +854,8 @@ if 'next_scan_seconds' not in st.session_state:
     st.session_state.next_scan_seconds = 300
 if 'sent_signal_ids' not in st.session_state:
     st.session_state.sent_signal_ids = set()
+if 'trade_journal' not in st.session_state:
+    st.session_state.trade_journal = []
 
 def run_scan():
     pairs = [
@@ -852,7 +865,6 @@ def run_scan():
     ]
     found_signals = []
     new_high_conf = []
-
     for pair in pairs:
         result = analyze_pair(pair)
         if result:
@@ -862,19 +874,16 @@ def run_scan():
                 if sig_id not in (
                     st.session_state.sent_signal_ids):
                     new_high_conf.append(result)
-
-    found_signals.sort(key=lambda x: x['score'],
-        reverse=True)
-    new_high_conf.sort(key=lambda x: x['score'],
-        reverse=True)
+    found_signals.sort(
+        key=lambda x: x['score'], reverse=True)
+    new_high_conf.sort(
+        key=lambda x: x['score'], reverse=True)
     top_signals = new_high_conf[:3]
-
     for signal in top_signals:
         sig_id = get_signal_id(signal)
         msg = format_discord_message(signal)
         chart_bytes = generate_chart(
-            signal['df'],
-            signal,
+            signal['df'], signal,
             signal['fvg_zones'],
             signal['ob_found'],
             signal['ob_top'],
@@ -885,8 +894,7 @@ def run_scan():
             signal['bull_choch'],
             signal['bear_choch'],
             signal['bull_sweep'],
-            signal['bear_sweep']
-        )
+            signal['bear_sweep'])
         if chart_bytes:
             success = send_discord_alert_with_image(
                 msg, chart_bytes)
@@ -895,10 +903,9 @@ def run_scan():
         if success:
             st.session_state.sent_signal_ids.add(sig_id)
             st.session_state.alerts_sent += 1
-
+            add_to_journal(signal)
     if len(st.session_state.sent_signal_ids) > 100:
         st.session_state.sent_signal_ids = set()
-
     signals_clean = []
     for s in found_signals:
         s_clean = {k: v for k, v in s.items()
@@ -908,7 +915,6 @@ def run_scan():
                 'bull_choch','bear_choch',
                 'bull_sweep','bear_sweep']}
         signals_clean.append(s_clean)
-
     st.session_state.signals = signals_clean
     st.session_state.total_scans += 1
     st.session_state.last_scan_time = get_ist_time()
@@ -990,13 +996,18 @@ def show_dashboard():
         else:
             st.warning("Session: " + session + " ⚠️")
         st.divider()
+        stats = calculate_stats()
+        st.metric("Win Rate",
+            str(stats['win_rate']) + "%")
+        st.metric("Total Signals", stats['total'])
+        st.divider()
         page = st.radio("Navigation", [
             "🏠 Dashboard",
             "📊 Active Signals",
-            "📰 News",
             "📓 Trade Journal",
-            "📅 Calendar",
             "📈 Performance",
+            "📰 News",
+            "📅 Calendar",
             "⚙️ Settings"
         ])
         st.divider()
@@ -1010,18 +1021,15 @@ def show_dashboard():
         show_main_dashboard()
     elif page == "📊 Active Signals":
         show_signals_page()
+    elif page == "📓 Trade Journal":
+        show_journal_page()
+    elif page == "📈 Performance":
+        show_performance_page()
     elif page == "📰 News":
         st.title("📰 Market News")
         st.info("News engine coming soon!")
-    elif page == "📓 Trade Journal":
-        st.title("📓 Trade Journal")
-        st.info("Journal coming soon!")
     elif page == "📅 Calendar":
-        st.title("📅 Calendar Analytics")
-        st.info("Calendar coming soon!")
-    elif page == "📈 Performance":
-        st.title("📈 Performance Stats")
-        st.info("Performance engine coming soon!")
+        show_calendar_page()
     elif page == "⚙️ Settings":
         show_settings_page()
 
@@ -1031,10 +1039,9 @@ def show_main_dashboard():
     if session not in ["London", "New York",
         "London + NY Overlap"]:
         st.warning(
-            "⚠️ Current session: " + session +
+            "⚠️ " + session +
             " — Best during London (12PM-8PM IST)"
             " and NY (9PM-12AM IST)!")
-
     col1, col2, col3 = st.columns([1,1,1])
     with col2:
         if not st.session_state.scanner_running:
@@ -1049,8 +1056,7 @@ def show_main_dashboard():
                     "🟢 **AI Trading Scanner STARTED!**\n"
                     "Session: " + session + "\n"
                     "Chart images enabled!\n"
-                    "Min 3 confluences required\n"
-                    "Max confidence: 95%\n"
+                    "Trade Journal active!\n"
                     "Time: " + get_ist_time().strftime(
                         '%d %b %Y %H:%M IST'))
                 st.rerun()
@@ -1061,13 +1067,13 @@ def show_main_dashboard():
                 st.session_state.scanner_running = False
                 send_discord_alert(
                     "🔴 **AI Trading Scanner STOPPED!**\n"
-                    "Total Scans: " +
+                    "Scans: " +
                     str(st.session_state.total_scans) +
-                    "\nAlerts Sent: " +
+                    "\nAlerts: " +
                     str(st.session_state.alerts_sent))
                 st.rerun()
-
     st.divider()
+    stats = calculate_stats()
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if st.session_state.scanner_running:
@@ -1075,17 +1081,15 @@ def show_main_dashboard():
         else:
             st.metric("Scanner", "🔴 STOPPED")
     with col2:
-        st.metric("Signals",
-            len(st.session_state.signals))
+        st.metric("Win Rate",
+            str(stats['win_rate']) + "%")
     with col3:
         st.metric("Alerts Sent",
             st.session_state.alerts_sent)
     with col4:
         st.metric("Total Scans",
             st.session_state.total_scans)
-
     st.divider()
-
     if st.session_state.scanner_running:
         if st.session_state.last_scan_time:
             elapsed = int((get_ist_time() -
@@ -1098,18 +1102,14 @@ def show_main_dashboard():
                 "Last scan: " +
                 st.session_state.last_scan_time.strftime(
                     '%H:%M:%S IST') +
-                " | Next scan in: " +
-                str(remaining) + " seconds")
-        else:
-            st.info("Starting first scan...")
-
+                " | Next in: " +
+                str(remaining) + "s")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("🔄 SCAN NOW",
                 type="primary",
                 use_container_width=True):
-                with st.spinner(
-                    "Scanning + generating charts..."):
+                with st.spinner("Scanning..."):
                     run_scan()
                 st.success("Scan complete!")
                 st.rerun()
@@ -1117,7 +1117,6 @@ def show_main_dashboard():
             if st.button("🔃 REFRESH",
                 use_container_width=True):
                 st.rerun()
-
     st.divider()
     st.subheader("📡 Pairs Being Scanned")
     pairs = [
@@ -1129,7 +1128,6 @@ def show_main_dashboard():
     for i, pair in enumerate(pairs):
         with cols[i % 3]:
             st.info(pair)
-
     if st.session_state.scanner_running:
         time.sleep(1)
         st.rerun()
@@ -1137,18 +1135,14 @@ def show_main_dashboard():
 def show_signals_page():
     st.title("📊 Active Signals")
     if not st.session_state.signals:
-        st.info(
-            "No signals yet! "
-            "Go to Dashboard and start scanner!")
+        st.info("No signals yet! Start scanner!")
         return
-
     high = [s for s in st.session_state.signals
         if s['score'] >= 80]
     medium = [s for s in st.session_state.signals
         if 60 <= s['score'] < 80]
     low = [s for s in st.session_state.signals
         if s['score'] < 60]
-
     if high:
         st.subheader("🟢 High Confidence (80%+)")
         for signal in high:
@@ -1158,8 +1152,7 @@ def show_signals_page():
                 "🟢 " + signal['pair'] + " " +
                 signal['direction'] + " | " +
                 str(signal['score']) + "% | " +
-                str(signal['confluences']) +
-                " confluences | " + status):
+                status):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -1192,16 +1185,15 @@ def show_signals_page():
                 if signal['negative']:
                     st.warning("Caution: " +
                         ", ".join(signal['negative']))
-
     if medium:
-        st.subheader("🟡 Medium Confidence (60-80%)")
+        st.subheader("🟡 Medium (60-80%)")
         for signal in medium:
             age = get_signal_age(signal['time'])
             status = get_signal_status(age)
             with st.expander(
                 "🟡 " + signal['pair'] + " " +
                 signal['direction'] + " | " +
-                str(signal['score']) + "% | " + status):
+                str(signal['score']) + "%"):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -1209,18 +1201,176 @@ def show_signals_page():
                     st.metric("SL", signal['sl'])
                 with col3:
                     st.metric("TP", signal['tp'])
-                st.write("Age: " + str(age) +
-                    " min | " + status)
-                st.write("Confluences: " +
-                    str(signal['confluences']))
+                st.write("Age: " + str(age) + " min")
                 st.write("Reasons: " +
                     ", ".join(signal['reasons']))
-
     if low:
         st.subheader("🔴 Low Confidence")
         for signal in low:
             st.write("🔴 " + signal['pair'] +
                 " | " + str(signal['score']) + "%")
+
+def show_journal_page():
+    st.title("📓 Trade Journal")
+    journal = st.session_state.trade_journal
+    if not journal:
+        st.info("No trades recorded yet!")
+        return
+
+    st.subheader("📝 Update Trade Results")
+    pending = [j for j in journal
+        if j['result'] == "Pending"]
+    if pending:
+        st.write("Pending trades to update:")
+        for trade in pending:
+            with st.expander(
+                trade['pair'] + " " +
+                trade['direction'] + " | " +
+                str(trade['score']) + "% | " +
+                trade['time']):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Entry", trade['entry'])
+                with col2:
+                    st.metric("SL", trade['sl'])
+                with col3:
+                    st.metric("TP", trade['tp'])
+                result = st.selectbox(
+                    "Result",
+                    ["Pending", "TP Hit",
+                     "SL Hit", "Expired",
+                     "Partial Win"],
+                    key="result_" + trade['id'])
+                if st.button("Update Result",
+                    key="update_" + trade['id']):
+                    for j in st.session_state.trade_journal:
+                        if j['id'] == trade['id']:
+                            j['result'] = result
+                            if result == "TP Hit":
+                                j['pnl'] = trade['rr']
+                            elif result == "SL Hit":
+                                j['pnl'] = -1
+                            elif result == "Partial Win":
+                                j['pnl'] = 0.5
+                    st.success("Result updated!")
+                    st.rerun()
+    else:
+        st.success("All trades have results! ✅")
+
+    st.divider()
+    st.subheader("📊 All Trades")
+    for trade in reversed(journal):
+        result_emoji = (
+            "✅" if trade['result'] == "TP Hit" else
+            "❌" if trade['result'] == "SL Hit" else
+            "⚠️" if trade['result'] == "Partial Win" else
+            "🔴" if trade['result'] == "Expired" else
+            "⏳")
+        st.write(
+            result_emoji + " " +
+            trade['pair'] + " " +
+            trade['direction'] + " | " +
+            str(trade['score']) + "% | " +
+            trade['result'] + " | " +
+            trade['time'])
+
+def show_performance_page():
+    st.title("📈 Performance Statistics")
+    stats = calculate_stats()
+    if stats['total'] == 0:
+        st.info("No completed trades yet!")
+        return
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Signals", stats['total'])
+    with col2:
+        st.metric("Wins", stats['wins'])
+    with col3:
+        st.metric("Losses", stats['losses'])
+    with col4:
+        st.metric("Win Rate",
+            str(stats['win_rate']) + "%")
+
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Best Pair", stats['best_pair'])
+    with col2:
+        st.metric("Best Session",
+            stats['best_session'])
+
+    st.divider()
+    st.subheader("📊 Results Breakdown")
+    journal = st.session_state.trade_journal
+    completed = [j for j in journal
+        if j['result'] != "Pending"]
+    if completed:
+        pair_stats = {}
+        for j in completed:
+            if j['pair'] not in pair_stats:
+                pair_stats[j['pair']] = {
+                    'wins': 0, 'total': 0}
+            pair_stats[j['pair']]['total'] += 1
+            if j['result'] == "TP Hit":
+                pair_stats[j['pair']]['wins'] += 1
+        st.subheader("Win Rate by Pair")
+        for pair, data in pair_stats.items():
+            wr = round(
+                data['wins'] / data['total'] * 100, 1)
+            st.write(pair + ": " + str(wr) +
+                "% (" + str(data['wins']) + "/" +
+                str(data['total']) + ")")
+
+def show_calendar_page():
+    st.title("📅 Calendar Analytics")
+    journal = st.session_state.trade_journal
+    if not journal:
+        st.info("No trades yet for calendar view!")
+        return
+
+    date_stats = {}
+    for trade in journal:
+        try:
+            date_str = trade['time'].split(' ')[0] + \
+                " " + trade['time'].split(' ')[1] + \
+                " " + trade['time'].split(' ')[2]
+            if date_str not in date_stats:
+                date_stats[date_str] = {
+                    'wins': 0,
+                    'losses': 0,
+                    'total': 0,
+                    'trades': []
+                }
+            date_stats[date_str]['total'] += 1
+            date_stats[date_str]['trades'].append(trade)
+            if trade['result'] == "TP Hit":
+                date_stats[date_str]['wins'] += 1
+            elif trade['result'] == "SL Hit":
+                date_stats[date_str]['losses'] += 1
+        except Exception:
+            pass
+
+    for date, data in sorted(date_stats.items(),
+        reverse=True):
+        win_rate = (round(
+            data['wins'] / data['total'] * 100, 1)
+            if data['total'] > 0 else 0)
+        color = "🟢" if win_rate >= 50 else "🔴"
+        with st.expander(
+            color + " " + date +
+            " | " + str(data['total']) + " trades" +
+            " | WR: " + str(win_rate) + "%"):
+            for trade in data['trades']:
+                result_emoji = (
+                    "✅" if trade['result'] == "TP Hit"
+                    else "❌" if trade['result'] == "SL Hit"
+                    else "⏳")
+                st.write(
+                    result_emoji + " " +
+                    trade['pair'] + " " +
+                    trade['direction'] + " | " +
+                    str(trade['score']) + "%")
 
 def show_settings_page():
     st.title("⚙️ Settings")
@@ -1230,36 +1380,34 @@ def show_settings_page():
         success = send_discord_alert(
             "✅ **Test Alert!**\n"
             "Discord working!\n"
-            "Chart images enabled!\n"
             "Time: " + get_ist_time().strftime(
                 '%d %b %Y %H:%M IST'))
         if success:
             st.success("Discord alert sent!")
         else:
             st.error("Discord failed!")
-
     st.divider()
     st.subheader("⏱️ Scan Settings")
     scan_interval = st.selectbox(
         "Scan Interval",
         [1, 2, 3, 5, 10, 15],
-        index=3
-    )
+        index=3)
     if st.button("Save Scan Interval"):
         st.session_state.next_scan_seconds = (
             scan_interval * 60)
-        st.success(
-            "Interval set to " +
+        st.success("Interval set to " +
             str(scan_interval) + " minutes!")
-
     st.divider()
     if st.button("Clear Alert History",
         use_container_width=True):
         st.session_state.sent_signal_ids = set()
         st.success("Alert history cleared!")
-
+    if st.button("Clear Trade Journal",
+        use_container_width=True):
+        st.session_state.trade_journal = []
+        st.success("Journal cleared!")
     st.divider()
-    st.subheader("📊 Quality Filters")
+    st.subheader("📊 Quality Filters Active")
     st.success("✅ Min 3 confluences required")
     st.success("✅ Confidence capped at 95%")
     st.success("✅ London + NY session only")
@@ -1268,7 +1416,8 @@ def show_settings_page():
     st.success("✅ No duplicate alerts")
     st.success("✅ Max 3 signals per scan")
     st.success("✅ Chart images in Discord")
-    st.success("✅ Signal expires 30 mins")
+    st.success("✅ Trade journal active")
+    st.success("✅ Performance tracking active")
     st.info(
         "Trading Hours IST:\n"
         "London: 12PM - 8PM\n"
