@@ -7,6 +7,13 @@ import pandas as pd
 import numpy as np
 import time
 import hashlib
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.patches import FancyArrowPatch
+import io
+import base64
 
 st.set_page_config(
     page_title="AI Trading Scanner",
@@ -20,6 +27,33 @@ IST = pytz.timezone('Asia/Kolkata')
 def get_ist_time():
     return datetime.now(IST)
 
+def is_london_session():
+    now = get_ist_time()
+    hour = now.hour
+    return 12 <= hour <= 20
+
+def is_ny_session():
+    now = get_ist_time()
+    hour = now.hour
+    return 17 <= hour <= 24 or hour == 0
+
+def is_trading_session():
+    return is_london_session() or is_ny_session()
+
+def get_current_session():
+    now = get_ist_time()
+    hour = now.hour
+    if 12 <= hour <= 16:
+        return "London"
+    elif 17 <= hour <= 20:
+        return "London + NY Overlap"
+    elif 21 <= hour <= 24 or hour == 0:
+        return "New York"
+    elif 4 <= hour <= 11:
+        return "Asia"
+    else:
+        return "Off Session"
+
 def send_discord_alert(message):
     try:
         webhook_url = st.secrets["DISCORD_WEBHOOK"]
@@ -29,18 +63,23 @@ def send_discord_alert(message):
     except Exception:
         return False
 
+def send_discord_alert_with_image(message, image_bytes):
+    try:
+        webhook_url = st.secrets["DISCORD_WEBHOOK"]
+        files = {
+            "file": ("chart.png", image_bytes, "image/png")
+        }
+        data = {"content": message}
+        response = requests.post(
+            webhook_url, data=data, files=files)
+        return response.status_code == 204
+    except Exception:
+        return False
+
 def get_signal_id(signal):
     key = (signal['pair'] + signal['direction'] +
         str(round(signal['entry'], 2)))
     return hashlib.md5(key.encode()).hexdigest()[:8]
-
-def is_entry_valid(signal, current_price, tolerance=0.003):
-    try:
-        entry = signal['entry']
-        diff = abs(current_price - entry) / entry
-        return diff <= tolerance
-    except Exception:
-        return True
 
 def get_signal_age(signal_time_str):
     try:
@@ -165,6 +204,7 @@ def detect_fvg(df):
     try:
         bullish_fvg = False
         bearish_fvg = False
+        fvg_zones = []
         for i in range(2, min(20, len(df)-1)):
             high_before = float(df['High'].values[-i-1])
             low_after = float(df['Low'].values[-i+1])
@@ -172,11 +212,23 @@ def detect_fvg(df):
             high_after = float(df['High'].values[-i+1])
             if low_after > high_before:
                 bullish_fvg = True
+                fvg_zones.append({
+                    'type': 'bullish',
+                    'top': low_after,
+                    'bottom': high_before,
+                    'index': len(df) - i
+                })
             if high_after < low_before:
                 bearish_fvg = True
-        return bullish_fvg, bearish_fvg
+                fvg_zones.append({
+                    'type': 'bearish',
+                    'top': low_before,
+                    'bottom': high_after,
+                    'index': len(df) - i
+                })
+        return bullish_fvg, bearish_fvg, fvg_zones
     except Exception:
-        return False, False
+        return False, False, []
 
 def detect_liquidity_sweep(df):
     try:
@@ -211,6 +263,57 @@ def detect_choch(df):
         return choch_bull, choch_bear
     except Exception:
         return False, False
+
+def detect_order_block(df, direction):
+    try:
+        closes = df['Close'].values.astype(float)
+        opens = df['Open'].values.astype(float)
+        highs = df['High'].values.astype(float)
+        lows = df['Low'].values.astype(float)
+        ob_found = False
+        ob_top = 0
+        ob_bottom = 0
+        ob_index = 0
+        for i in range(5, min(30, len(df)-1)):
+            if direction == "BUY":
+                if (closes[-i] < opens[-i] and
+                    closes[-i+1] > opens[-i+1]):
+                    ob_top = opens[-i]
+                    ob_bottom = lows[-i]
+                    ob_index = len(df) - i
+                    ob_found = True
+                    break
+            else:
+                if (closes[-i] > opens[-i] and
+                    closes[-i+1] < opens[-i+1]):
+                    ob_top = highs[-i]
+                    ob_bottom = opens[-i]
+                    ob_index = len(df) - i
+                    ob_found = True
+                    break
+        return ob_found, ob_top, ob_bottom, ob_index
+    except Exception:
+        return False, 0, 0, 0
+
+def is_price_in_premium_discount(df, direction):
+    try:
+        closes = df['Close'].values.astype(float)
+        highs = df['High'].values.astype(float)
+        lows = df['Low'].values.astype(float)
+        swing_high = float(max(highs[-50:]))
+        swing_low = float(min(lows[-50:]))
+        current = float(closes[-1])
+        range_size = swing_high - swing_low
+        if range_size == 0:
+            return True
+        position = (current - swing_low) / range_size
+        if direction == "BUY" and position < 0.5:
+            return True
+        elif direction == "SELL" and position > 0.5:
+            return True
+        return False
+    except Exception:
+        return True
 
 def calculate_rsi(df, period=14):
     try:
@@ -264,8 +367,224 @@ def detect_market_regime(df):
     except Exception:
         return "UNKNOWN"
 
+def calculate_structure_sl(df, direction, atr):
+    try:
+        highs = df['High'].values.astype(float)
+        lows = df['Low'].values.astype(float)
+        close = float(df['Close'].iloc[-1])
+        if direction == "BUY":
+            recent_low = float(min(lows[-10:]))
+            sl = recent_low - (atr * 0.5)
+        else:
+            recent_high = float(max(highs[-10:]))
+            sl = recent_high + (atr * 0.5)
+        return round(sl, 5)
+    except Exception:
+        close = float(df['Close'].iloc[-1])
+        if direction == "BUY":
+            return round(close - atr * 2, 5)
+        else:
+            return round(close + atr * 2, 5)
+
+def generate_chart(df, signal, fvg_zones, ob_found,
+    ob_top, ob_bottom, ob_index,
+    bull_bos, bear_bos, bull_choch, bear_choch,
+    bull_sweep, bear_sweep):
+    try:
+        fig, ax = plt.subplots(figsize=(14, 8))
+        fig.patch.set_facecolor('#0A0A0A')
+        ax.set_facecolor('#0A0A0A')
+
+        display_df = df.tail(50).reset_index(drop=True)
+        n = len(display_df)
+
+        for i in range(n):
+            o = float(display_df['Open'].iloc[i])
+            h = float(display_df['High'].iloc[i])
+            l = float(display_df['Low'].iloc[i])
+            c = float(display_df['Close'].iloc[i])
+            color = '#00FF88' if c >= o else '#FF4444'
+            ax.plot([i, i], [l, h],
+                color=color, linewidth=1)
+            ax.add_patch(plt.Rectangle(
+                (i - 0.3, min(o, c)),
+                0.6, abs(c - o),
+                color=color, alpha=0.9))
+
+        for fvg in fvg_zones:
+            try:
+                fvg_x = fvg.get('index', n-5) - (
+                    len(df) - n)
+                if 0 <= fvg_x < n:
+                    color = ('#00FF8844'
+                        if fvg['type'] == 'bullish'
+                        else '#FF444444')
+                    border = ('#00FF88'
+                        if fvg['type'] == 'bullish'
+                        else '#FF4444')
+                    ax.add_patch(plt.Rectangle(
+                        (fvg_x, fvg['bottom']),
+                        n - fvg_x,
+                        fvg['top'] - fvg['bottom'],
+                        color=color,
+                        linewidth=1.5,
+                        edgecolor=border))
+                    label = ('FVG Bull'
+                        if fvg['type'] == 'bullish'
+                        else 'FVG Bear')
+                    ax.text(fvg_x + 0.5,
+                        fvg['top'], label,
+                        color=border,
+                        fontsize=7,
+                        fontweight='bold')
+            except Exception:
+                pass
+
+        if ob_found:
+            ob_x = ob_index - (len(df) - n)
+            if 0 <= ob_x < n:
+                ob_color = ('#00FF8833'
+                    if signal['direction'] == 'BUY'
+                    else '#FF444433')
+                ob_border = ('#00FF88'
+                    if signal['direction'] == 'BUY'
+                    else '#FF4444')
+                ax.add_patch(plt.Rectangle(
+                    (ob_x, ob_bottom),
+                    n - ob_x,
+                    ob_top - ob_bottom,
+                    color=ob_color,
+                    linewidth=2,
+                    edgecolor=ob_border,
+                    linestyle='--'))
+                ax.text(ob_x + 0.5, ob_top,
+                    'OB', color=ob_border,
+                    fontsize=8, fontweight='bold')
+
+        if bull_bos or bear_bos:
+            bos_price = (float(max(
+                df['High'].values[-40:-20]))
+                if bear_bos else float(min(
+                df['Low'].values[-40:-20])))
+            bos_color = '#00FF88' if bull_bos else '#FF4444'
+            bos_label = 'BOS Bull' if bull_bos else 'BOS Bear'
+            ax.axhline(y=bos_price, color=bos_color,
+                linewidth=1.5, linestyle='--', alpha=0.8)
+            ax.text(2, bos_price, bos_label,
+                color=bos_color, fontsize=8,
+                fontweight='bold')
+
+        if bull_sweep or bear_sweep:
+            sweep_price = (float(min(
+                df['Low'].values[-30:-5]))
+                if bull_sweep else float(max(
+                df['High'].values[-30:-5])))
+            sweep_color = '#00FF88' if bull_sweep else '#FF4444'
+            ax.axhline(y=sweep_price,
+                color=sweep_color,
+                linewidth=1.5,
+                linestyle=':',
+                alpha=0.8)
+            ax.text(2, sweep_price,
+                'Liquidity Sweep',
+                color=sweep_color,
+                fontsize=8,
+                fontweight='bold')
+
+        entry = signal['entry']
+        sl = signal['sl']
+        tp = signal['tp']
+        direction = signal['direction']
+
+        ax.axhline(y=entry, color='#FFFFFF',
+            linewidth=2, linestyle='-', alpha=0.9)
+        ax.text(n + 0.5, entry, 'ENTRY',
+            color='#FFFFFF', fontsize=9,
+            fontweight='bold')
+
+        ax.axhline(y=sl, color='#FF4444',
+            linewidth=2, linestyle='-', alpha=0.9)
+        ax.text(n + 0.5, sl, 'SL',
+            color='#FF4444', fontsize=9,
+            fontweight='bold')
+
+        ax.axhline(y=tp, color='#00FF88',
+            linewidth=2, linestyle='-', alpha=0.9)
+        ax.text(n + 0.5, tp, 'TP',
+            color='#00FF88', fontsize=9,
+            fontweight='bold')
+
+        if direction == "BUY":
+            tp_rect = plt.Rectangle(
+                (0, entry), n, tp - entry,
+                color='#00FF8822', linewidth=0)
+            sl_rect = plt.Rectangle(
+                (0, sl), n, entry - sl,
+                color='#FF444422', linewidth=0)
+        else:
+            tp_rect = plt.Rectangle(
+                (0, tp), n, entry - tp,
+                color='#00FF8822', linewidth=0)
+            sl_rect = plt.Rectangle(
+                (0, entry), n, sl - entry,
+                color='#FF444422', linewidth=0)
+        ax.add_patch(tp_rect)
+        ax.add_patch(sl_rect)
+
+        grade = ("A+" if signal['score'] >= 90 else
+                 "A" if signal['score'] >= 80 else
+                 "B" if signal['score'] >= 70 else "C")
+
+        title = (signal['pair'] + " " +
+            signal['direction'] + " | " +
+            str(signal['score']) + "% | Grade: " +
+            grade + " | " + signal['session'])
+        ax.set_title(title,
+            color='#FFFFFF', fontsize=14,
+            fontweight='bold', pad=15)
+
+        reasons_text = " | ".join(signal['reasons'][:4])
+        fig.text(0.5, 0.02, reasons_text,
+            ha='center', color='#AAAAAA',
+            fontsize=9)
+
+        info_text = (
+            "Entry: " + str(entry) +
+            "  |  SL: " + str(sl) +
+            "  |  TP: " + str(tp) +
+            "  |  RR: 1:" + str(signal['rr']) +
+            "  |  RSI: " + str(signal['rsi']) +
+            "  |  HTF: " + signal['htf_bias'])
+        fig.text(0.5, 0.96, info_text,
+            ha='center', color='#CCCCCC',
+            fontsize=9)
+
+        ax.tick_params(colors='#AAAAAA')
+        ax.spines['bottom'].set_color('#333333')
+        ax.spines['top'].set_color('#333333')
+        ax.spines['left'].set_color('#333333')
+        ax.spines['right'].set_color('#333333')
+        ax.yaxis.label.set_color('#AAAAAA')
+        ax.xaxis.label.set_color('#AAAAAA')
+
+        plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=150,
+            bbox_inches='tight',
+            facecolor='#0A0A0A')
+        buf.seek(0)
+        image_bytes = buf.read()
+        plt.close(fig)
+        return image_bytes
+    except Exception:
+        return None
+
 def analyze_pair(symbol):
     try:
+        if not is_trading_session():
+            return None
+
         df_5m = get_data(symbol, interval="5m")
         if df_5m is None or len(df_5m) < 50:
             return None
@@ -273,12 +592,14 @@ def analyze_pair(symbol):
         score = 0
         reasons = []
         negative_reasons = []
+        confluences = 0
 
         htf_bias = get_htf_bias(symbol)
         regime = detect_market_regime(df_5m)
+        session = get_current_session()
 
         bull_bos, bear_bos = detect_bos(df_5m)
-        bull_fvg, bear_fvg = detect_fvg(df_5m)
+        bull_fvg, bear_fvg, fvg_zones = detect_fvg(df_5m)
         bull_sweep, bear_sweep = detect_liquidity_sweep(
             df_5m)
         bull_choch, bear_choch = detect_choch(df_5m)
@@ -304,56 +625,82 @@ def analyze_pair(symbol):
             elif htf_bias == "BEARISH":
                 direction = "SELL"
             else:
-                direction = "BUY"
+                return None
         else:
             return None
+
+        ob_found, ob_top, ob_bottom, ob_index = (
+            detect_order_block(df_5m, direction))
+        in_pd_zone = is_price_in_premium_discount(
+            df_5m, direction)
 
         if htf_bias == "BULLISH" and direction == "BUY":
             score += 20
             reasons.append("HTF Bullish Alignment")
+            confluences += 1
         elif htf_bias == "BEARISH" and direction == "SELL":
             score += 20
             reasons.append("HTF Bearish Alignment")
+            confluences += 1
         elif htf_bias == "NEUTRAL":
-            score += 10
-            reasons.append("HTF Neutral")
+            score += 5
+            negative_reasons.append("HTF Neutral")
         else:
+            score -= 10
             negative_reasons.append("HTF Conflict")
 
         if bull_bos and direction == "BUY":
-            score += 25
+            score += 20
             reasons.append("Bullish BOS")
+            confluences += 1
         if bear_bos and direction == "SELL":
-            score += 25
+            score += 20
             reasons.append("Bearish BOS")
+            confluences += 1
         if bull_fvg and direction == "BUY":
-            score += 20
+            score += 15
             reasons.append("Bullish FVG")
+            confluences += 1
         if bear_fvg and direction == "SELL":
-            score += 20
+            score += 15
             reasons.append("Bearish FVG")
+            confluences += 1
         if bull_sweep and direction == "BUY":
-            score += 25
+            score += 20
             reasons.append("Bullish Liquidity Sweep")
+            confluences += 1
         if bear_sweep and direction == "SELL":
-            score += 25
+            score += 20
             reasons.append("Bearish Liquidity Sweep")
+            confluences += 1
         if bull_choch and direction == "BUY":
-            score += 20
+            score += 15
             reasons.append("Bullish CHOCH")
+            confluences += 1
         if bear_choch and direction == "SELL":
-            score += 20
+            score += 15
             reasons.append("Bearish CHOCH")
+            confluences += 1
+        if ob_found:
+            score += 10
+            reasons.append("Order Block Present")
+            confluences += 1
+        if in_pd_zone:
+            score += 10
+            reasons.append("Premium/Discount Zone")
+            confluences += 1
 
-        if direction == "BUY" and rsi < 70:
+        if direction == "BUY" and 30 < rsi < 60:
             score += 10
-            reasons.append("RSI Valid Zone")
-        elif direction == "SELL" and rsi > 30:
+            reasons.append("RSI Bullish Zone")
+        elif direction == "SELL" and 40 < rsi < 70:
             score += 10
-            reasons.append("RSI Valid Zone")
-        if rsi > 80:
+            reasons.append("RSI Bearish Zone")
+        elif rsi > 85:
+            score -= 10
             negative_reasons.append("RSI Overbought")
-        if rsi < 20:
+        elif rsi < 15:
+            score -= 10
             negative_reasons.append("RSI Oversold")
 
         if regime == "TRENDING UP" and direction == "BUY":
@@ -362,42 +709,70 @@ def analyze_pair(symbol):
         elif regime == "TRENDING DOWN" and direction == "SELL":
             score += 10
             reasons.append("Trend Confirmation")
+        elif regime == "VOLATILE":
+            score -= 10
+            negative_reasons.append("High Volatility")
         elif regime == "RANGING":
+            score -= 5
+            negative_reasons.append("Ranging Market")
+
+        if session in ["London", "New York",
+            "London + NY Overlap"]:
             score += 5
-            reasons.append("Range Market")
+            reasons.append(session + " Session")
+        else:
+            score -= 15
+            negative_reasons.append("Off-Peak Session")
+
+        if confluences < 3:
+            return None
+
+        score = min(score, 95)
+        score = max(score, 0)
+
+        sl = calculate_structure_sl(df_5m, direction, atr)
+        sl_distance = abs(close - sl)
 
         if direction == "BUY":
             entry = close
-            sl = close - (atr * 1.5)
-            tp = close + (atr * 3)
+            tp = round(entry + (sl_distance * 2), 5)
         else:
             entry = close
-            sl = close + (atr * 1.5)
-            tp = close - (atr * 3)
+            tp = round(entry - (sl_distance * 2), 5)
 
-        rr = (abs(tp - entry) / abs(sl - entry)
-            if abs(sl - entry) > 0 else 2.0)
-
-        signal_time = get_ist_time().strftime(
-            '%d %b %Y %H:%M IST')
-
-        return {
+        signal = {
             "pair": symbol,
             "direction": direction,
-            "score": min(score, 100),
+            "score": score,
             "entry": round(entry, 5),
             "sl": round(sl, 5),
             "tp": round(tp, 5),
-            "rr": round(rr, 2),
+            "rr": 2.0,
             "rsi": round(rsi, 1),
             "htf_bias": htf_bias,
             "regime": regime,
+            "session": session,
+            "confluences": confluences,
             "reasons": reasons,
             "negative": negative_reasons,
-            "time": signal_time,
+            "time": get_ist_time().strftime(
+                '%d %b %Y %H:%M IST'),
             "current_price": round(close, 5),
-            "atr": round(atr, 5)
+            "atr": round(atr, 5),
+            "df": df_5m,
+            "fvg_zones": fvg_zones,
+            "ob_found": ob_found,
+            "ob_top": ob_top,
+            "ob_bottom": ob_bottom,
+            "ob_index": ob_index,
+            "bull_bos": bull_bos,
+            "bear_bos": bear_bos,
+            "bull_choch": bull_choch,
+            "bear_choch": bear_choch,
+            "bull_sweep": bull_sweep,
+            "bear_sweep": bear_sweep
         }
+        return signal
     except Exception:
         return None
 
@@ -414,38 +789,35 @@ def format_discord_message(signal):
 
     if signal['direction'] == "BUY":
         entry_instruction = (
-            "📍 Enter BUY when price reaches: " +
-            str(signal['entry']) + " or below")
-        price_note = (
-            "⚠️ Valid if price is near " +
-            str(signal['entry']) +
-            " (within " + str(signal['atr']) + " ATR)")
+            "📍 **Enter BUY at or below: " +
+            str(signal['entry']) + "**")
     else:
         entry_instruction = (
-            "📍 Enter SELL when price reaches: " +
-            str(signal['entry']) + " or above")
-        price_note = (
-            "⚠️ Valid if price is near " +
-            str(signal['entry']) +
-            " (within " + str(signal['atr']) + " ATR)")
+            "📍 **Enter SELL at or above: " +
+            str(signal['entry']) + "**")
 
     msg = (
         "🚨 **HIGH CONFIDENCE SIGNAL** 🚨\n\n"
         "**" + emoji + " " + signal['pair'] + "**\n\n"
         "📊 Confidence: " + str(signal['score']) + "%\n"
-        "🏆 Grade: " + grade + "\n\n"
+        "🏆 Grade: " + grade + "\n"
+        "🔗 Confluences: " + str(signal['confluences']) +
+        " factors\n\n"
+        + entry_instruction + "\n"
         "💰 Entry: " + str(signal['entry']) + "\n"
         "🛑 Stop Loss: " + str(signal['sl']) + "\n"
         "🎯 Take Profit: " + str(signal['tp']) + "\n"
         "⚖️ RR Ratio: 1:" + str(signal['rr']) + "\n\n"
-        + entry_instruction + "\n"
-        + price_note + "\n\n"
         "📈 HTF Bias: " + signal['htf_bias'] + "\n"
         "🌍 Market: " + signal['regime'] + "\n"
+        "🕐 Session: " + signal['session'] + "\n"
         "📉 RSI: " + str(signal['rsi']) + "\n\n"
         "⏰ Signal Time: " + signal['time'] + "\n"
-        "🕐 Signal Age: FRESH (just detected)\n"
-        "✅ Status: VALID — Price at entry zone\n\n"
+        "🟢 Status: FRESH — Enter Now!\n\n"
+        "⚠️ Only enter if price near " +
+        str(signal['entry']) + "\n"
+        "Skip if price moved more than " +
+        str(signal['atr']) + " away!\n\n"
         "✅ **Reasons:**\n" + reasons_text + "\n"
     )
     if signal['negative']:
@@ -487,7 +859,8 @@ def run_scan():
             found_signals.append(result)
             if result['score'] >= 80:
                 sig_id = get_signal_id(result)
-                if sig_id not in st.session_state.sent_signal_ids:
+                if sig_id not in (
+                    st.session_state.sent_signal_ids):
                     new_high_conf.append(result)
 
     found_signals.sort(key=lambda x: x['score'],
@@ -499,14 +872,44 @@ def run_scan():
     for signal in top_signals:
         sig_id = get_signal_id(signal)
         msg = format_discord_message(signal)
-        if send_discord_alert(msg):
+        chart_bytes = generate_chart(
+            signal['df'],
+            signal,
+            signal['fvg_zones'],
+            signal['ob_found'],
+            signal['ob_top'],
+            signal['ob_bottom'],
+            signal['ob_index'],
+            signal['bull_bos'],
+            signal['bear_bos'],
+            signal['bull_choch'],
+            signal['bear_choch'],
+            signal['bull_sweep'],
+            signal['bear_sweep']
+        )
+        if chart_bytes:
+            success = send_discord_alert_with_image(
+                msg, chart_bytes)
+        else:
+            success = send_discord_alert(msg)
+        if success:
             st.session_state.sent_signal_ids.add(sig_id)
             st.session_state.alerts_sent += 1
 
     if len(st.session_state.sent_signal_ids) > 100:
         st.session_state.sent_signal_ids = set()
 
-    st.session_state.signals = found_signals
+    signals_clean = []
+    for s in found_signals:
+        s_clean = {k: v for k, v in s.items()
+            if k not in ['df','fvg_zones',
+                'ob_found','ob_top','ob_bottom',
+                'ob_index','bull_bos','bear_bos',
+                'bull_choch','bear_choch',
+                'bull_sweep','bear_sweep']}
+        signals_clean.append(s_clean)
+
+    st.session_state.signals = signals_clean
     st.session_state.total_scans += 1
     st.session_state.last_scan_time = get_ist_time()
 
@@ -524,8 +927,9 @@ def auto_scan():
         if st.session_state.last_scan_time is None:
             run_scan()
             return
-        elapsed = (now -
-            st.session_state.last_scan_time).seconds
+        elapsed = int((now -
+            st.session_state.last_scan_time
+            ).total_seconds())
         if elapsed >= st.session_state.next_scan_seconds:
             run_scan()
     except Exception:
@@ -579,6 +983,13 @@ def show_dashboard():
         st.write(get_ist_time().strftime(
             '%d %b %Y %H:%M:%S IST'))
         st.divider()
+        session = get_current_session()
+        if session in ["London", "New York",
+            "London + NY Overlap"]:
+            st.success("Session: " + session + " ✅")
+        else:
+            st.warning("Session: " + session + " ⚠️")
+        st.divider()
         page = st.radio("Navigation", [
             "🏠 Dashboard",
             "📊 Active Signals",
@@ -616,6 +1027,14 @@ def show_dashboard():
 
 def show_main_dashboard():
     st.title("🏠 Dashboard")
+    session = get_current_session()
+    if session not in ["London", "New York",
+        "London + NY Overlap"]:
+        st.warning(
+            "⚠️ Current session: " + session +
+            " — Best during London (12PM-8PM IST)"
+            " and NY (9PM-12AM IST)!")
+
     col1, col2, col3 = st.columns([1,1,1])
     with col2:
         if not st.session_state.scanner_running:
@@ -628,11 +1047,10 @@ def show_main_dashboard():
                 st.session_state.sent_signal_ids = set()
                 send_discord_alert(
                     "🟢 **AI Trading Scanner STARTED!**\n"
-                    "Auto scanning every 5 minutes\n"
-                    "9 pairs with SMC/ICT Analysis\n"
-                    "Max 3 best signals per scan\n"
-                    "No duplicate alerts!\n"
-                    "Min confidence: 80%\n"
+                    "Session: " + session + "\n"
+                    "Chart images enabled!\n"
+                    "Min 3 confluences required\n"
+                    "Max confidence: 95%\n"
                     "Time: " + get_ist_time().strftime(
                         '%d %b %Y %H:%M IST'))
                 st.rerun()
@@ -645,7 +1063,7 @@ def show_main_dashboard():
                     "🔴 **AI Trading Scanner STOPPED!**\n"
                     "Total Scans: " +
                     str(st.session_state.total_scans) +
-                    "\nUnique Alerts Sent: " +
+                    "\nAlerts Sent: " +
                     str(st.session_state.alerts_sent))
                 st.rerun()
 
@@ -690,7 +1108,8 @@ def show_main_dashboard():
             if st.button("🔄 SCAN NOW",
                 type="primary",
                 use_container_width=True):
-                with st.spinner("Scanning all pairs..."):
+                with st.spinner(
+                    "Scanning + generating charts..."):
                     run_scan()
                 st.success("Scan complete!")
                 st.rerun()
@@ -739,7 +1158,8 @@ def show_signals_page():
                 "🟢 " + signal['pair'] + " " +
                 signal['direction'] + " | " +
                 str(signal['score']) + "% | " +
-                status):
+                str(signal['confluences']) +
+                " confluences | " + status):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -747,29 +1167,31 @@ def show_signals_page():
                     st.metric("SL", signal['sl'])
                 with col3:
                     st.metric("TP", signal['tp'])
+                if age >= 30:
+                    st.error("⛔ EXPIRED!")
+                elif age >= 15:
+                    st.warning("⚠️ Signal aging!")
+                else:
+                    if signal['direction'] == "BUY":
+                        st.success(
+                            "✅ Enter BUY at or below: "
+                            + str(signal['entry']))
+                    else:
+                        st.success(
+                            "✅ Enter SELL at or above: "
+                            + str(signal['entry']))
                 st.write("RR: 1:" + str(signal['rr']))
                 st.write("HTF: " + signal['htf_bias'])
+                st.write("Session: " + signal['session'])
                 st.write("Market: " + signal['regime'])
                 st.write("RSI: " + str(signal['rsi']))
-                st.write("Signal Age: " +
-                    str(age) + " minutes | " + status)
-                if signal['direction'] == "BUY":
-                    st.success(
-                        "Enter BUY at: " +
-                        str(signal['entry']) + " or below")
-                else:
-                    st.success(
-                        "Enter SELL at: " +
-                        str(signal['entry']) + " or above")
+                st.write("Age: " + str(age) +
+                    " min | " + status)
                 st.write("Reasons: " +
                     ", ".join(signal['reasons']))
                 if signal['negative']:
                     st.warning("Caution: " +
                         ", ".join(signal['negative']))
-                if age >= 30:
-                    st.error(
-                        "⚠️ SETUP EXPIRED! "
-                        "Do not trade this signal!")
 
     if medium:
         st.subheader("🟡 Medium Confidence (60-80%)")
@@ -779,8 +1201,7 @@ def show_signals_page():
             with st.expander(
                 "🟡 " + signal['pair'] + " " +
                 signal['direction'] + " | " +
-                str(signal['score']) + "% | " +
-                status):
+                str(signal['score']) + "% | " + status):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -788,8 +1209,10 @@ def show_signals_page():
                     st.metric("SL", signal['sl'])
                 with col3:
                     st.metric("TP", signal['tp'])
-                st.write("Signal Age: " +
-                    str(age) + " minutes | " + status)
+                st.write("Age: " + str(age) +
+                    " min | " + status)
+                st.write("Confluences: " +
+                    str(signal['confluences']))
                 st.write("Reasons: " +
                     ", ".join(signal['reasons']))
 
@@ -805,18 +1228,18 @@ def show_settings_page():
     if st.button("Test Discord Alert",
         use_container_width=True):
         success = send_discord_alert(
-            "✅ **Test Alert from AI Trading Scanner!**\n"
-            "Discord is working perfectly!\n"
+            "✅ **Test Alert!**\n"
+            "Discord working!\n"
+            "Chart images enabled!\n"
             "Time: " + get_ist_time().strftime(
                 '%d %b %Y %H:%M IST'))
         if success:
             st.success("Discord alert sent!")
         else:
-            st.error(
-                "Discord failed! Check webhook URL!")
+            st.error("Discord failed!")
 
     st.divider()
-    st.subheader("⏱️ Auto Scan Settings")
+    st.subheader("⏱️ Scan Settings")
     scan_interval = st.selectbox(
         "Scan Interval",
         [1, 2, 3, 5, 10, 15],
@@ -826,27 +1249,30 @@ def show_settings_page():
         st.session_state.next_scan_seconds = (
             scan_interval * 60)
         st.success(
-            "Scan interval set to " +
+            "Interval set to " +
             str(scan_interval) + " minutes!")
 
     st.divider()
-    if st.button("Clear Sent Alerts History",
+    if st.button("Clear Alert History",
         use_container_width=True):
         st.session_state.sent_signal_ids = set()
         st.success("Alert history cleared!")
 
     st.divider()
-    st.subheader("📊 Scanner Info")
-    st.info("Min Confidence: 80%")
-    st.info("Max signals per scan: 3 best only")
-    st.info("No duplicate alerts!")
-    st.info("Signal expires after: 30 minutes")
-    st.info("Pairs: XAUUSD, USDJPY, AUDCAD, "
-        "GBPJPY, GBPUSD, EURUSD, EURJPY, US30, NAS100")
-    st.info("Analysis: SMC + ICT + Multi Timeframe")
-    st.info("Auto Scan: Every " +
-        str(st.session_state.next_scan_seconds // 60) +
-        " minutes")
+    st.subheader("📊 Quality Filters")
+    st.success("✅ Min 3 confluences required")
+    st.success("✅ Confidence capped at 95%")
+    st.success("✅ London + NY session only")
+    st.success("✅ Structure based SL")
+    st.success("✅ Premium/Discount zone")
+    st.success("✅ No duplicate alerts")
+    st.success("✅ Max 3 signals per scan")
+    st.success("✅ Chart images in Discord")
+    st.success("✅ Signal expires 30 mins")
+    st.info(
+        "Trading Hours IST:\n"
+        "London: 12PM - 8PM\n"
+        "NY: 9PM - 12AM")
 
 if __name__ == "__main__":
     main()
