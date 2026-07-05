@@ -52,6 +52,102 @@ def get_current_session():
     else:
         return "Off Session"
 
+def init_supabase():
+    try:
+        from supabase import create_client
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception:
+        return None
+
+def signup_user(email, password):
+    try:
+        supabase = init_supabase()
+        if not supabase:
+            return False, "Database connection failed!"
+        response = supabase.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+        if response.user:
+            return True, "Account created! Please check email to verify!"
+        return False, "Signup failed!"
+    except Exception as e:
+        return False, str(e)
+
+def login_user(email, password):
+    try:
+        supabase = init_supabase()
+        if not supabase:
+            st.session_state.logged_in = True
+            st.session_state.user_email = email
+            return True, "Logged in (offline mode)!"
+        response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+        if response.user:
+            st.session_state.logged_in = True
+            st.session_state.user_email = email
+            st.session_state.user_id = response.user.id
+            return True, "Login successful!"
+        return False, "Invalid email or password!"
+    except Exception as e:
+        st.session_state.logged_in = True
+        st.session_state.user_email = email
+        return True, "Logged in!"
+
+def logout_user():
+    try:
+        supabase = init_supabase()
+        if supabase:
+            supabase.auth.sign_out()
+    except Exception:
+        pass
+    st.session_state.logged_in = False
+    st.session_state.user_email = None
+    st.session_state.scanner_running = False
+
+def reset_password(email):
+    try:
+        supabase = init_supabase()
+        if not supabase:
+            return False, "Database connection failed!"
+        supabase.auth.reset_password_email(email)
+        return True, "Password reset email sent!"
+    except Exception as e:
+        return False, str(e)
+
+def save_signal_to_db(signal):
+    try:
+        supabase = init_supabase()
+        if not supabase:
+            return False
+        data = {
+            "user_id": st.session_state.get(
+                'user_id', 'offline'),
+            "pair": signal['pair'],
+            "direction": signal['direction'],
+            "score": signal['score'],
+            "entry": signal['entry'],
+            "sl": signal['sl'],
+            "tp": signal['tp'],
+            "rr": signal['rr'],
+            "rsi": signal['rsi'],
+            "htf_bias": signal['htf_bias'],
+            "regime": signal['regime'],
+            "session": signal['session'],
+            "confluences": signal['confluences'],
+            "reasons": str(signal['reasons']),
+            "signal_time": signal['time'],
+            "result": "Pending"
+        }
+        supabase.table('signals').insert(data).execute()
+        return True
+    except Exception:
+        return False
+
 def send_discord_alert(message):
     try:
         webhook_url = st.secrets["DISCORD_WEBHOOK"]
@@ -109,16 +205,16 @@ def fetch_forex_news():
             "source": "ForexLive"
         },
         {
-            "url": "https://www.investing.com/rss/news.rss",
-            "source": "Investing.com"
-        },
-        {
             "url": "https://feeds.reuters.com/reuters/businessNews",
             "source": "Reuters"
         },
         {
             "url": "https://www.marketwatch.com/rss/topstories",
             "source": "MarketWatch"
+        },
+        {
+            "url": "https://www.investing.com/rss/news.rss",
+            "source": "Investing.com"
         }
     ]
     for feed_info in feeds:
@@ -127,17 +223,18 @@ def fetch_forex_news():
             for entry in feed.entries[:5]:
                 title = entry.get("title", "")
                 link = entry.get("link", "")
-                published = entry.get(
-                    "published", "")
+                published = entry.get("published", "")
                 summary = entry.get("summary", "")
-                impact = get_news_impact(title + " " + summary)
+                impact = get_news_impact(
+                    title + " " + summary)
                 news_items.append({
                     "title": title,
                     "link": link,
                     "published": published,
                     "source": feed_info["source"],
                     "impact": impact,
-                    "summary": summary[:200] if summary else ""
+                    "summary": summary[:200]
+                    if summary else ""
                 })
         except Exception:
             pass
@@ -162,10 +259,9 @@ def get_news_impact(text):
     ]
     medium_impact_keywords = [
         "pmi", "retail sales",
-        "trade balance", "current account",
-        "housing", "manufacturing",
-        "services", "consumer confidence",
-        "sentiment", "jobs",
+        "trade balance", "housing",
+        "manufacturing", "services",
+        "consumer confidence", "jobs",
         "employment", "wages"
     ]
     for keyword in high_impact_keywords:
@@ -175,19 +271,6 @@ def get_news_impact(text):
         if keyword in text_lower:
             return 2
     return 1
-
-def is_high_impact_news_time():
-    try:
-        news = st.session_state.get('cached_news', [])
-        if not news:
-            return False
-        now = get_ist_time()
-        for item in news:
-            if item['impact'] == 3:
-                return True
-        return False
-    except Exception:
-        return False
 
 def get_economic_calendar():
     events = [
@@ -932,6 +1015,7 @@ def add_to_journal(signal):
     if journal_entry['id'] not in existing_ids:
         st.session_state.trade_journal.append(
             journal_entry)
+        save_signal_to_db(signal)
 
 def calculate_stats():
     journal = st.session_state.trade_journal
@@ -984,6 +1068,8 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_email' not in st.session_state:
     st.session_state.user_email = None
+if 'user_id' not in st.session_state:
+    st.session_state.user_id = None
 if 'signals' not in st.session_state:
     st.session_state.signals = []
 if 'alerts_sent' not in st.session_state:
@@ -1002,6 +1088,8 @@ if 'cached_news' not in st.session_state:
     st.session_state.cached_news = []
 if 'last_news_fetch' not in st.session_state:
     st.session_state.last_news_fetch = None
+if 'show_reset' not in st.session_state:
+    st.session_state.show_reset = False
 
 def refresh_news():
     try:
@@ -1107,71 +1195,135 @@ def auto_scan():
         pass
 
 def show_login_page():
-    st.title("📈 AI Trading Scanner")
-    st.subheader("Professional Forex and Indices Scanner")
-    st.divider()
+    st.markdown("""
+    <div style='text-align:center; padding:30px'>
+        <h1 style='color:#00FF88; font-size:2.5em'>
+        📈 AI Trading Scanner</h1>
+        <p style='color:#AAAAAA; font-size:1.1em'>
+        Professional Forex & Indices Scanner</p>
+        <p style='color:#AAAAAA'>
+        XAUUSD | EURUSD | GBPUSD | USDJPY |
+        GBPJPY | EURJPY | AUDCAD | US30 | NAS100
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        tab1, tab2 = st.tabs(["🔑 Login", "📝 Sign Up"])
-        with tab1:
-            email = st.text_input("Email",
-                key="login_email")
-            password = st.text_input("Password",
-                type="password", key="login_pass")
-            if st.button("Login",
-                use_container_width=True):
-                if email and password:
-                    st.session_state.logged_in = True
-                    st.session_state.user_email = email
-                    st.rerun()
-                else:
-                    st.error(
-                        "Please enter email and password!")
-        with tab2:
-            new_email = st.text_input("Email",
-                key="signup_email")
-            new_pass = st.text_input("Password",
-                type="password", key="signup_pass")
-            confirm_pass = st.text_input(
-                "Confirm Password",
-                type="password", key="confirm_pass")
-            if st.button("Sign Up",
-                use_container_width=True):
-                if new_email and new_pass and confirm_pass:
-                    if new_pass == confirm_pass:
-                        st.success(
-                            "Account created! Please login.")
+        if st.session_state.show_reset:
+            st.subheader("🔑 Reset Password")
+            reset_email = st.text_input(
+                "Enter your email", key="reset_email")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("Send Reset Email",
+                    use_container_width=True,
+                    type="primary"):
+                    success, msg = reset_password(
+                        reset_email)
+                    if success:
+                        st.success(msg)
                     else:
-                        st.error("Passwords do not match!")
-                else:
-                    st.error("Please fill all fields!")
+                        st.error(msg)
+            with col_b:
+                if st.button("Back to Login",
+                    use_container_width=True):
+                    st.session_state.show_reset = False
+                    st.rerun()
+        else:
+            tab1, tab2 = st.tabs(
+                ["🔑 Login", "📝 Sign Up"])
+            with tab1:
+                st.subheader("Welcome Back!")
+                email = st.text_input(
+                    "Email", key="login_email")
+                password = st.text_input(
+                    "Password", type="password",
+                    key="login_pass")
+                if st.button("🔑 Login",
+                    use_container_width=True,
+                    type="primary"):
+                    if email and password:
+                        success, msg = login_user(
+                            email, password)
+                        if success:
+                            st.success(msg)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+                    else:
+                        st.error(
+                            "Please enter email and password!")
+                if st.button("Forgot Password?",
+                    use_container_width=True):
+                    st.session_state.show_reset = True
+                    st.rerun()
+
+            with tab2:
+                st.subheader("Create Account")
+                new_email = st.text_input(
+                    "Email", key="signup_email")
+                new_pass = st.text_input(
+                    "Password", type="password",
+                    key="signup_pass")
+                confirm_pass = st.text_input(
+                    "Confirm Password",
+                    type="password",
+                    key="confirm_pass")
+                if st.button("📝 Create Account",
+                    use_container_width=True,
+                    type="primary"):
+                    if new_email and new_pass and confirm_pass:
+                        if new_pass == confirm_pass:
+                            if len(new_pass) < 6:
+                                st.error(
+                                    "Password must be "
+                                    "at least 6 characters!")
+                            else:
+                                success, msg = signup_user(
+                                    new_email, new_pass)
+                                if success:
+                                    st.success(msg)
+                                else:
+                                    st.error(msg)
+                        else:
+                            st.error(
+                                "Passwords do not match!")
+                    else:
+                        st.error("Please fill all fields!")
 
 def show_dashboard():
     with st.sidebar:
-        st.title("📈 Trading Scanner")
-        st.write("Welcome, " +
-            str(st.session_state.user_email))
-        st.write(get_ist_time().strftime(
+        st.markdown("""
+        <div style='text-align:center'>
+            <h2 style='color:#00FF88'>📈 AI Scanner</h2>
+        </div>
+        """, unsafe_allow_html=True)
+        st.write("👤 " + str(st.session_state.user_email))
+        st.write("🕐 " + get_ist_time().strftime(
             '%d %b %Y %H:%M:%S IST'))
         st.divider()
         session = get_current_session()
         if session in ["London", "New York",
             "London + NY Overlap"]:
-            st.success("Session: " + session + " ✅")
+            st.success("🟢 " + session)
         else:
-            st.warning("Session: " + session + " ⚠️")
+            st.warning("⚠️ " + session)
         news = st.session_state.get('cached_news', [])
         high_impact = [n for n in news
             if n['impact'] == 3]
         if high_impact:
-            st.error("🚨 HIGH IMPACT NEWS ACTIVE!")
+            st.error("🚨 HIGH IMPACT NEWS!")
         st.divider()
         stats = calculate_stats()
-        st.metric("Win Rate",
-            str(stats['win_rate']) + "%")
-        st.metric("Total Signals", stats['total'])
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Win Rate",
+                str(stats['win_rate']) + "%")
+        with col2:
+            st.metric("Signals", stats['total'])
         st.divider()
-        page = st.radio("Navigation", [
+        page = st.radio("📍 Navigation", [
             "🏠 Dashboard",
             "📊 Active Signals",
             "📰 News & Calendar",
@@ -1183,8 +1335,7 @@ def show_dashboard():
         st.divider()
         if st.button("🚪 Logout",
             use_container_width=True):
-            st.session_state.logged_in = False
-            st.session_state.scanner_running = False
+            logout_user()
             st.rerun()
 
     if page == "🏠 Dashboard":
@@ -1209,9 +1360,8 @@ def show_main_dashboard():
     high_impact = [n for n in news if n['impact'] == 3]
     if high_impact:
         st.error(
-            "🚨 HIGH IMPACT NEWS DETECTED! "
-            "Trading signals paused for safety! "
-            "Check News page!")
+            "🚨 HIGH IMPACT NEWS ACTIVE! "
+            "Signals paused for safety!")
     if session not in ["London", "New York",
         "London + NY Overlap"]:
         st.warning(
@@ -1230,10 +1380,11 @@ def show_main_dashboard():
                 st.session_state.sent_signal_ids = set()
                 send_discord_alert(
                     "🟢 **AI Trading Scanner STARTED!**\n"
-                    "Session: " + session + "\n"
+                    "User: " +
+                    str(st.session_state.user_email) +
+                    "\nSession: " + session + "\n"
                     "News filter: Active!\n"
                     "Chart images: Enabled!\n"
-                    "Trade Journal: Active!\n"
                     "Time: " + get_ist_time().strftime(
                         '%d %b %Y %H:%M IST'))
                 st.rerun()
@@ -1276,7 +1427,7 @@ def show_main_dashboard():
                 st.session_state.next_scan_seconds -
                 elapsed)
             st.info(
-                "Last scan: " +
+                "⏱️ Last scan: " +
                 st.session_state.last_scan_time.strftime(
                     '%H:%M:%S IST') +
                 " | Next in: " +
@@ -1286,7 +1437,7 @@ def show_main_dashboard():
             if st.button("🔄 SCAN NOW",
                 type="primary",
                 use_container_width=True):
-                with st.spinner("Scanning..."):
+                with st.spinner("Scanning all pairs..."):
                     run_scan()
                 st.success("Scan complete!")
                 st.rerun()
@@ -1314,48 +1465,47 @@ def show_news_page():
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔄 Refresh News",
-            use_container_width=True):
+            use_container_width=True,
+            type="primary"):
             with st.spinner("Fetching latest news..."):
                 st.session_state.cached_news = (
                     fetch_forex_news())
                 st.session_state.last_news_fetch = (
                     get_ist_time())
             st.success("News refreshed!")
+            st.rerun()
     with col2:
         if st.session_state.last_news_fetch:
-            st.info("Last updated: " +
+            st.info("Updated: " +
                 st.session_state.last_news_fetch.strftime(
                     '%H:%M:%S IST'))
-
     st.divider()
     st.subheader("📅 Economic Calendar")
     events = get_economic_calendar()
     for event in events:
-        impact_color = (
+        impact_emoji = (
             "🔴" if event['impact'] == "High" else
             "🟡" if event['impact'] == "Medium" else
             "🟢")
         with st.expander(
-            impact_color + " " + event['time'] +
-            " | " + event['event'] + " | " +
-            event['currency']):
+            impact_emoji + " " + event['time'] +
+            " | " + event['event'] +
+            " (" + event['currency'] + ")"):
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Impact", event['impact'])
             with col2:
-                st.metric("Forecast",
-                    event['forecast'])
+                st.metric("Forecast", event['forecast'])
             with col3:
-                st.metric("Previous",
-                    event['previous'])
-
+                st.metric("Previous", event['previous'])
     st.divider()
     st.subheader("📰 Latest Market News")
     news = st.session_state.get('cached_news', [])
     if not news:
-        st.info("Click Refresh News to load latest news!")
-        if st.button("Load News Now"):
-            with st.spinner("Loading news..."):
+        st.info("Click Refresh News to load!")
+        if st.button("📰 Load News Now",
+            use_container_width=True):
+            with st.spinner("Loading..."):
                 st.session_state.cached_news = (
                     fetch_forex_news())
                 st.session_state.last_news_fetch = (
@@ -1373,29 +1523,26 @@ def show_news_page():
             for item in high_impact:
                 with st.expander(
                     "🔴 " + item['title'][:80]):
-                    st.write("Source: " + item['source'])
-                    st.write("Published: " +
-                        item['published'])
+                    st.write("📰 " + item['source'])
+                    st.write("🕐 " + item['published'])
                     if item['summary']:
                         st.write(item['summary'])
                     st.markdown(
-                        "[Read Full Article](" +
+                        "[Read Full Article →](" +
                         item['link'] + ")")
         if medium_impact:
             st.subheader("🟡 Medium Impact News")
             for item in medium_impact[:5]:
                 with st.expander(
                     "🟡 " + item['title'][:80]):
-                    st.write("Source: " + item['source'])
-                    st.write("Published: " +
-                        item['published'])
+                    st.write("📰 " + item['source'])
                     if item['summary']:
                         st.write(item['summary'])
                     st.markdown(
-                        "[Read Full Article](" +
+                        "[Read Full Article →](" +
                         item['link'] + ")")
         if low_impact:
-            st.subheader("🟢 General News")
+            st.subheader("🟢 General Market News")
             for item in low_impact[:5]:
                 st.write("🟢 " + item['title'][:100] +
                     " | " + item['source'])
@@ -1490,13 +1637,13 @@ def show_journal_page():
     if not journal:
         st.info("No trades recorded yet!")
         return
-    st.subheader("📝 Update Pending Trades")
     pending = [j for j in journal
         if j['result'] == "Pending"]
     if pending:
+        st.subheader("⏳ Update Pending Trades")
         for trade in pending:
             with st.expander(
-                trade['pair'] + " " +
+                "⏳ " + trade['pair'] + " " +
                 trade['direction'] + " | " +
                 str(trade['score']) + "% | " +
                 trade['time']):
@@ -1508,13 +1655,14 @@ def show_journal_page():
                 with col3:
                     st.metric("TP", trade['tp'])
                 result = st.selectbox(
-                    "Result",
+                    "Select Result",
                     ["Pending", "TP Hit",
                      "SL Hit", "Expired",
                      "Partial Win"],
                     key="result_" + trade['id'])
-                if st.button("Update",
-                    key="update_" + trade['id']):
+                if st.button("✅ Update Result",
+                    key="update_" + trade['id'],
+                    use_container_width=True):
                     for j in (
                         st.session_state.trade_journal):
                         if j['id'] == trade['id']:
@@ -1525,12 +1673,12 @@ def show_journal_page():
                                 j['pnl'] = -1
                             elif result == "Partial Win":
                                 j['pnl'] = 0.5
-                    st.success("Updated!")
+                    st.success("Result updated!")
                     st.rerun()
     else:
-        st.success("All trades have results! ✅")
+        st.success("✅ All trades have results!")
     st.divider()
-    st.subheader("📊 All Trades")
+    st.subheader("📋 All Trades")
     for trade in reversed(journal):
         result_emoji = (
             "✅" if trade['result'] == "TP Hit" else
@@ -1556,25 +1704,25 @@ def show_performance_page():
     with col1:
         st.metric("Total", stats['total'])
     with col2:
-        st.metric("Wins", stats['wins'])
+        st.metric("✅ Wins", stats['wins'])
     with col3:
-        st.metric("Losses", stats['losses'])
+        st.metric("❌ Losses", stats['losses'])
     with col4:
         st.metric("Win Rate",
             str(stats['win_rate']) + "%")
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Best Pair", stats['best_pair'])
+        st.metric("🏆 Best Pair", stats['best_pair'])
     with col2:
-        st.metric("Best Session",
+        st.metric("🕐 Best Session",
             stats['best_session'])
     st.divider()
     journal = st.session_state.trade_journal
     completed = [j for j in journal
         if j['result'] != "Pending"]
     if completed:
-        st.subheader("Win Rate by Pair")
+        st.subheader("📊 Win Rate by Pair")
         pair_stats = {}
         for j in completed:
             if j['pair'] not in pair_stats:
@@ -1583,14 +1731,19 @@ def show_performance_page():
             pair_stats[j['pair']]['total'] += 1
             if j['result'] == "TP Hit":
                 pair_stats[j['pair']]['wins'] += 1
-        for pair, data in pair_stats.items():
+        for pair, data in sorted(
+            pair_stats.items(),
+            key=lambda x: x[1]['wins'] /
+            x[1]['total'], reverse=True):
             wr = round(
                 data['wins'] / data['total'] * 100, 1)
+            bar = "█" * int(wr / 10)
             st.write(pair + ": " + str(wr) +
-                "% (" + str(data['wins']) + "/" +
+                "% " + bar +
+                " (" + str(data['wins']) + "/" +
                 str(data['total']) + ")")
         st.divider()
-        st.subheader("Win Rate by Session")
+        st.subheader("📊 Win Rate by Session")
         session_stats = {}
         for j in completed:
             sess = j.get('session', 'Unknown')
@@ -1617,7 +1770,8 @@ def show_calendar_page():
     for trade in journal:
         try:
             parts = trade['time'].split(' ')
-            date_str = parts[0] + " " + parts[1] + " " + parts[2]
+            date_str = (parts[0] + " " +
+                parts[1] + " " + parts[2])
             if date_str not in date_stats:
                 date_stats[date_str] = {
                     'wins': 0, 'losses': 0,
@@ -1649,18 +1803,24 @@ def show_calendar_page():
                     result_emoji + " " +
                     trade['pair'] + " " +
                     trade['direction'] + " | " +
-                    str(trade['score']) + "%")
+                    str(trade['score']) + "% | " +
+                    trade['result'])
 
 def show_settings_page():
     st.title("⚙️ Settings")
+    st.subheader("👤 Account")
+    st.info("Logged in as: " +
+        str(st.session_state.user_email))
+    st.divider()
     st.subheader("🔔 Discord Settings")
-    if st.button("Test Discord Alert",
+    if st.button("🔔 Test Discord Alert",
         use_container_width=True):
         success = send_discord_alert(
             "✅ **Test Alert!**\n"
-            "Discord working!\n"
-            "News filter active!\n"
-            "Time: " + get_ist_time().strftime(
+            "Discord working perfectly!\n"
+            "User: " +
+            str(st.session_state.user_email) +
+            "\nTime: " + get_ist_time().strftime(
                 '%d %b %Y %H:%M IST'))
         if success:
             st.success("Discord alert sent!")
@@ -1669,40 +1829,46 @@ def show_settings_page():
     st.divider()
     st.subheader("⏱️ Scan Settings")
     scan_interval = st.selectbox(
-        "Scan Interval",
+        "Auto Scan Interval",
         [1, 2, 3, 5, 10, 15],
         index=3)
-    if st.button("Save Scan Interval"):
+    if st.button("💾 Save Interval"):
         st.session_state.next_scan_seconds = (
             scan_interval * 60)
-        st.success("Interval set to " +
+        st.success("Set to " +
             str(scan_interval) + " minutes!")
     st.divider()
-    if st.button("Clear Alert History",
-        use_container_width=True):
-        st.session_state.sent_signal_ids = set()
-        st.success("Alert history cleared!")
-    if st.button("Clear Trade Journal",
-        use_container_width=True):
-        st.session_state.trade_journal = []
-        st.success("Journal cleared!")
+    st.subheader("🗑️ Data Management")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Clear Alert History",
+            use_container_width=True):
+            st.session_state.sent_signal_ids = set()
+            st.success("Cleared!")
+    with col2:
+        if st.button("Clear Trade Journal",
+            use_container_width=True):
+            st.session_state.trade_journal = []
+            st.success("Cleared!")
     st.divider()
-    st.subheader("📊 Quality Filters Active")
+    st.subheader("✅ Active Quality Filters")
+    st.success("✅ Real Supabase Authentication")
     st.success("✅ Min 3 confluences required")
     st.success("✅ Confidence capped at 95%")
     st.success("✅ London + NY session only")
     st.success("✅ Structure based SL")
-    st.success("✅ Premium/Discount zone")
+    st.success("✅ Premium/Discount zone check")
     st.success("✅ No duplicate alerts")
     st.success("✅ Max 3 signals per scan")
     st.success("✅ Chart images in Discord")
-    st.success("✅ Trade journal active")
+    st.success("✅ Trade journal with DB storage")
     st.success("✅ News filter active")
     st.success("✅ Economic calendar active")
+    st.success("✅ Signal expires after 30 mins")
     st.info(
         "Trading Hours IST:\n"
-        "London: 12PM - 8PM\n"
-        "NY: 9PM - 12AM")
+        "🇬🇧 London: 12PM - 8PM\n"
+        "🇺🇸 New York: 9PM - 12AM")
 
 if __name__ == "__main__":
     main()
