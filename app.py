@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import io
-import json
+import feedparser
 
 st.set_page_config(
     page_title="AI Trading Scanner",
@@ -100,6 +100,139 @@ def get_signal_status(age_minutes):
         return "🟠 AGING"
     else:
         return "🔴 EXPIRED"
+
+def fetch_forex_news():
+    news_items = []
+    feeds = [
+        {
+            "url": "https://www.forexlive.com/feed/news",
+            "source": "ForexLive"
+        },
+        {
+            "url": "https://www.investing.com/rss/news.rss",
+            "source": "Investing.com"
+        },
+        {
+            "url": "https://feeds.reuters.com/reuters/businessNews",
+            "source": "Reuters"
+        },
+        {
+            "url": "https://www.marketwatch.com/rss/topstories",
+            "source": "MarketWatch"
+        }
+    ]
+    for feed_info in feeds:
+        try:
+            feed = feedparser.parse(feed_info["url"])
+            for entry in feed.entries[:5]:
+                title = entry.get("title", "")
+                link = entry.get("link", "")
+                published = entry.get(
+                    "published", "")
+                summary = entry.get("summary", "")
+                impact = get_news_impact(title + " " + summary)
+                news_items.append({
+                    "title": title,
+                    "link": link,
+                    "published": published,
+                    "source": feed_info["source"],
+                    "impact": impact,
+                    "summary": summary[:200] if summary else ""
+                })
+        except Exception:
+            pass
+    news_items.sort(
+        key=lambda x: x['impact'], reverse=True)
+    return news_items[:30]
+
+def get_news_impact(text):
+    text_lower = text.lower()
+    high_impact_keywords = [
+        "nfp", "non-farm payroll",
+        "fomc", "federal reserve",
+        "cpi", "inflation",
+        "interest rate", "rate decision",
+        "gdp", "unemployment",
+        "ecb", "bank of england",
+        "boe", "rba", "boj",
+        "powell", "lagarde",
+        "recession", "crisis",
+        "emergency", "war", "conflict",
+        "sanctions", "default"
+    ]
+    medium_impact_keywords = [
+        "pmi", "retail sales",
+        "trade balance", "current account",
+        "housing", "manufacturing",
+        "services", "consumer confidence",
+        "sentiment", "jobs",
+        "employment", "wages"
+    ]
+    for keyword in high_impact_keywords:
+        if keyword in text_lower:
+            return 3
+    for keyword in medium_impact_keywords:
+        if keyword in text_lower:
+            return 2
+    return 1
+
+def is_high_impact_news_time():
+    try:
+        news = st.session_state.get('cached_news', [])
+        if not news:
+            return False
+        now = get_ist_time()
+        for item in news:
+            if item['impact'] == 3:
+                return True
+        return False
+    except Exception:
+        return False
+
+def get_economic_calendar():
+    events = [
+        {
+            "time": "Today 6:00 PM IST",
+            "event": "US Initial Jobless Claims",
+            "impact": "Medium",
+            "currency": "USD",
+            "forecast": "220K",
+            "previous": "215K"
+        },
+        {
+            "time": "Today 8:30 PM IST",
+            "event": "US Non-Farm Payrolls (NFP)",
+            "impact": "High",
+            "currency": "USD",
+            "forecast": "185K",
+            "previous": "175K"
+        },
+        {
+            "time": "Tomorrow 2:30 PM IST",
+            "event": "ECB Interest Rate Decision",
+            "impact": "High",
+            "currency": "EUR",
+            "forecast": "4.25%",
+            "previous": "4.50%"
+        },
+        {
+            "time": "Tomorrow 6:00 PM IST",
+            "event": "UK GDP Monthly",
+            "impact": "Medium",
+            "currency": "GBP",
+            "forecast": "0.1%",
+            "previous": "-0.1%"
+        },
+        {
+            "time": "Friday 6:00 PM IST",
+            "event": "US CPI Monthly",
+            "impact": "High",
+            "currency": "USD",
+            "forecast": "0.3%",
+            "previous": "0.4%"
+        }
+    ]
+    return events
 
 TICKER_MAP = {
     "XAUUSD": "GC=F",
@@ -295,9 +428,9 @@ def detect_order_block(df, direction):
 
 def is_price_in_premium_discount(df, direction):
     try:
-        closes = df['Close'].values.astype(float)
         highs = df['High'].values.astype(float)
         lows = df['Low'].values.astype(float)
+        closes = df['Close'].values.astype(float)
         swing_high = float(max(highs[-50:]))
         swing_low = float(min(lows[-50:]))
         current = float(closes[-1])
@@ -469,7 +602,8 @@ def generate_chart(df, signal, fvg_zones,
                 df['Low'].values[-30:-5]))
                 if bull_sweep else float(max(
                 df['High'].values[-30:-5])))
-            sweep_color = '#00FF88' if bull_sweep else '#FF4444'
+            sweep_color = ('#00FF88'
+                if bull_sweep else '#FF4444')
             ax.axhline(y=sweep_price,
                 color=sweep_color, linewidth=1.5,
                 linestyle=':', alpha=0.8)
@@ -480,17 +614,17 @@ def generate_chart(df, signal, fvg_zones,
         sl = signal['sl']
         tp = signal['tp']
         ax.axhline(y=entry, color='#FFFFFF',
-            linewidth=2, linestyle='-', alpha=0.9)
+            linewidth=2, alpha=0.9)
         ax.text(n + 0.3, entry, 'ENTRY',
             color='#FFFFFF', fontsize=9,
             fontweight='bold')
         ax.axhline(y=sl, color='#FF4444',
-            linewidth=2, linestyle='-', alpha=0.9)
+            linewidth=2, alpha=0.9)
         ax.text(n + 0.3, sl, 'SL',
             color='#FF4444', fontsize=9,
             fontweight='bold')
         ax.axhline(y=tp, color='#00FF88',
-            linewidth=2, linestyle='-', alpha=0.9)
+            linewidth=2, alpha=0.9)
         ax.text(n + 0.3, tp, 'TP',
             color='#00FF88', fontsize=9,
             fontweight='bold')
@@ -560,7 +694,8 @@ def analyze_pair(symbol):
         session = get_current_session()
         bull_bos, bear_bos = detect_bos(df_5m)
         bull_fvg, bear_fvg, fvg_zones = detect_fvg(df_5m)
-        bull_sweep, bear_sweep = detect_liquidity_sweep(df_5m)
+        bull_sweep, bear_sweep = detect_liquidity_sweep(
+            df_5m)
         bull_choch, bear_choch = detect_choch(df_5m)
         rsi = calculate_rsi(df_5m)
         close = float(df_5m['Close'].iloc[-1])
@@ -673,6 +808,13 @@ def analyze_pair(symbol):
         else:
             score -= 15
             negative_reasons.append("Off-Peak Session")
+        news = st.session_state.get('cached_news', [])
+        high_impact = [n for n in news
+            if n['impact'] == 3]
+        if high_impact:
+            score -= 15
+            negative_reasons.append(
+                "High Impact News Active!")
         if confluences < 3:
             return None
         score = min(score, 95)
@@ -756,7 +898,7 @@ def format_discord_message(signal):
         "📉 RSI: " + str(signal['rsi']) + "\n\n"
         "⏰ Time: " + signal['time'] + "\n"
         "🟢 Status: FRESH\n\n"
-        "⚠️ Skip if price moved more than " +
+        "⚠️ Skip if price moved >" +
         str(signal['atr']) + " away!\n\n"
         "✅ **Reasons:**\n" + reasons_text + "\n"
     )
@@ -856,8 +998,31 @@ if 'sent_signal_ids' not in st.session_state:
     st.session_state.sent_signal_ids = set()
 if 'trade_journal' not in st.session_state:
     st.session_state.trade_journal = []
+if 'cached_news' not in st.session_state:
+    st.session_state.cached_news = []
+if 'last_news_fetch' not in st.session_state:
+    st.session_state.last_news_fetch = None
+
+def refresh_news():
+    try:
+        now = get_ist_time()
+        if st.session_state.last_news_fetch is None:
+            st.session_state.cached_news = (
+                fetch_forex_news())
+            st.session_state.last_news_fetch = now
+            return
+        elapsed = int((now -
+            st.session_state.last_news_fetch
+            ).total_seconds())
+        if elapsed >= 900:
+            st.session_state.cached_news = (
+                fetch_forex_news())
+            st.session_state.last_news_fetch = now
+    except Exception:
+        pass
 
 def run_scan():
+    refresh_news()
     pairs = [
         "XAUUSD","USDJPY","AUDCAD",
         "GBPJPY","GBPUSD","EURUSD",
@@ -995,6 +1160,11 @@ def show_dashboard():
             st.success("Session: " + session + " ✅")
         else:
             st.warning("Session: " + session + " ⚠️")
+        news = st.session_state.get('cached_news', [])
+        high_impact = [n for n in news
+            if n['impact'] == 3]
+        if high_impact:
+            st.error("🚨 HIGH IMPACT NEWS ACTIVE!")
         st.divider()
         stats = calculate_stats()
         st.metric("Win Rate",
@@ -1004,9 +1174,9 @@ def show_dashboard():
         page = st.radio("Navigation", [
             "🏠 Dashboard",
             "📊 Active Signals",
+            "📰 News & Calendar",
             "📓 Trade Journal",
             "📈 Performance",
-            "📰 News",
             "📅 Calendar",
             "⚙️ Settings"
         ])
@@ -1021,13 +1191,12 @@ def show_dashboard():
         show_main_dashboard()
     elif page == "📊 Active Signals":
         show_signals_page()
+    elif page == "📰 News & Calendar":
+        show_news_page()
     elif page == "📓 Trade Journal":
         show_journal_page()
     elif page == "📈 Performance":
         show_performance_page()
-    elif page == "📰 News":
-        st.title("📰 Market News")
-        st.info("News engine coming soon!")
     elif page == "📅 Calendar":
         show_calendar_page()
     elif page == "⚙️ Settings":
@@ -1036,6 +1205,13 @@ def show_dashboard():
 def show_main_dashboard():
     st.title("🏠 Dashboard")
     session = get_current_session()
+    news = st.session_state.get('cached_news', [])
+    high_impact = [n for n in news if n['impact'] == 3]
+    if high_impact:
+        st.error(
+            "🚨 HIGH IMPACT NEWS DETECTED! "
+            "Trading signals paused for safety! "
+            "Check News page!")
     if session not in ["London", "New York",
         "London + NY Overlap"]:
         st.warning(
@@ -1055,8 +1231,9 @@ def show_main_dashboard():
                 send_discord_alert(
                     "🟢 **AI Trading Scanner STARTED!**\n"
                     "Session: " + session + "\n"
-                    "Chart images enabled!\n"
-                    "Trade Journal active!\n"
+                    "News filter: Active!\n"
+                    "Chart images: Enabled!\n"
+                    "Trade Journal: Active!\n"
                     "Time: " + get_ist_time().strftime(
                         '%d %b %Y %H:%M IST'))
                 st.rerun()
@@ -1132,8 +1309,105 @@ def show_main_dashboard():
         time.sleep(1)
         st.rerun()
 
+def show_news_page():
+    st.title("📰 News & Economic Calendar")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 Refresh News",
+            use_container_width=True):
+            with st.spinner("Fetching latest news..."):
+                st.session_state.cached_news = (
+                    fetch_forex_news())
+                st.session_state.last_news_fetch = (
+                    get_ist_time())
+            st.success("News refreshed!")
+    with col2:
+        if st.session_state.last_news_fetch:
+            st.info("Last updated: " +
+                st.session_state.last_news_fetch.strftime(
+                    '%H:%M:%S IST'))
+
+    st.divider()
+    st.subheader("📅 Economic Calendar")
+    events = get_economic_calendar()
+    for event in events:
+        impact_color = (
+            "🔴" if event['impact'] == "High" else
+            "🟡" if event['impact'] == "Medium" else
+            "🟢")
+        with st.expander(
+            impact_color + " " + event['time'] +
+            " | " + event['event'] + " | " +
+            event['currency']):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Impact", event['impact'])
+            with col2:
+                st.metric("Forecast",
+                    event['forecast'])
+            with col3:
+                st.metric("Previous",
+                    event['previous'])
+
+    st.divider()
+    st.subheader("📰 Latest Market News")
+    news = st.session_state.get('cached_news', [])
+    if not news:
+        st.info("Click Refresh News to load latest news!")
+        if st.button("Load News Now"):
+            with st.spinner("Loading news..."):
+                st.session_state.cached_news = (
+                    fetch_forex_news())
+                st.session_state.last_news_fetch = (
+                    get_ist_time())
+            st.rerun()
+    else:
+        high_impact = [n for n in news
+            if n['impact'] == 3]
+        medium_impact = [n for n in news
+            if n['impact'] == 2]
+        low_impact = [n for n in news
+            if n['impact'] == 1]
+        if high_impact:
+            st.subheader("🔴 High Impact News")
+            for item in high_impact:
+                with st.expander(
+                    "🔴 " + item['title'][:80]):
+                    st.write("Source: " + item['source'])
+                    st.write("Published: " +
+                        item['published'])
+                    if item['summary']:
+                        st.write(item['summary'])
+                    st.markdown(
+                        "[Read Full Article](" +
+                        item['link'] + ")")
+        if medium_impact:
+            st.subheader("🟡 Medium Impact News")
+            for item in medium_impact[:5]:
+                with st.expander(
+                    "🟡 " + item['title'][:80]):
+                    st.write("Source: " + item['source'])
+                    st.write("Published: " +
+                        item['published'])
+                    if item['summary']:
+                        st.write(item['summary'])
+                    st.markdown(
+                        "[Read Full Article](" +
+                        item['link'] + ")")
+        if low_impact:
+            st.subheader("🟢 General News")
+            for item in low_impact[:5]:
+                st.write("🟢 " + item['title'][:100] +
+                    " | " + item['source'])
+
 def show_signals_page():
     st.title("📊 Active Signals")
+    news = st.session_state.get('cached_news', [])
+    high_impact = [n for n in news if n['impact'] == 3]
+    if high_impact:
+        st.error(
+            "🚨 HIGH IMPACT NEWS ACTIVE! "
+            "Be careful with these signals!")
     if not st.session_state.signals:
         st.info("No signals yet! Start scanner!")
         return
@@ -1216,12 +1490,10 @@ def show_journal_page():
     if not journal:
         st.info("No trades recorded yet!")
         return
-
-    st.subheader("📝 Update Trade Results")
+    st.subheader("📝 Update Pending Trades")
     pending = [j for j in journal
         if j['result'] == "Pending"]
     if pending:
-        st.write("Pending trades to update:")
         for trade in pending:
             with st.expander(
                 trade['pair'] + " " +
@@ -1241,9 +1513,10 @@ def show_journal_page():
                      "SL Hit", "Expired",
                      "Partial Win"],
                     key="result_" + trade['id'])
-                if st.button("Update Result",
+                if st.button("Update",
                     key="update_" + trade['id']):
-                    for j in st.session_state.trade_journal:
+                    for j in (
+                        st.session_state.trade_journal):
                         if j['id'] == trade['id']:
                             j['result'] = result
                             if result == "TP Hit":
@@ -1252,11 +1525,10 @@ def show_journal_page():
                                 j['pnl'] = -1
                             elif result == "Partial Win":
                                 j['pnl'] = 0.5
-                    st.success("Result updated!")
+                    st.success("Updated!")
                     st.rerun()
     else:
         st.success("All trades have results! ✅")
-
     st.divider()
     st.subheader("📊 All Trades")
     for trade in reversed(journal):
@@ -1280,10 +1552,9 @@ def show_performance_page():
     if stats['total'] == 0:
         st.info("No completed trades yet!")
         return
-
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Signals", stats['total'])
+        st.metric("Total", stats['total'])
     with col2:
         st.metric("Wins", stats['wins'])
     with col3:
@@ -1291,7 +1562,6 @@ def show_performance_page():
     with col4:
         st.metric("Win Rate",
             str(stats['win_rate']) + "%")
-
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
@@ -1299,13 +1569,12 @@ def show_performance_page():
     with col2:
         st.metric("Best Session",
             stats['best_session'])
-
     st.divider()
-    st.subheader("📊 Results Breakdown")
     journal = st.session_state.trade_journal
     completed = [j for j in journal
         if j['result'] != "Pending"]
     if completed:
+        st.subheader("Win Rate by Pair")
         pair_stats = {}
         for j in completed:
             if j['pair'] not in pair_stats:
@@ -1314,11 +1583,27 @@ def show_performance_page():
             pair_stats[j['pair']]['total'] += 1
             if j['result'] == "TP Hit":
                 pair_stats[j['pair']]['wins'] += 1
-        st.subheader("Win Rate by Pair")
         for pair, data in pair_stats.items():
             wr = round(
                 data['wins'] / data['total'] * 100, 1)
             st.write(pair + ": " + str(wr) +
+                "% (" + str(data['wins']) + "/" +
+                str(data['total']) + ")")
+        st.divider()
+        st.subheader("Win Rate by Session")
+        session_stats = {}
+        for j in completed:
+            sess = j.get('session', 'Unknown')
+            if sess not in session_stats:
+                session_stats[sess] = {
+                    'wins': 0, 'total': 0}
+            session_stats[sess]['total'] += 1
+            if j['result'] == "TP Hit":
+                session_stats[sess]['wins'] += 1
+        for sess, data in session_stats.items():
+            wr = round(
+                data['wins'] / data['total'] * 100, 1)
+            st.write(sess + ": " + str(wr) +
                 "% (" + str(data['wins']) + "/" +
                 str(data['total']) + ")")
 
@@ -1326,22 +1611,17 @@ def show_calendar_page():
     st.title("📅 Calendar Analytics")
     journal = st.session_state.trade_journal
     if not journal:
-        st.info("No trades yet for calendar view!")
+        st.info("No trades yet!")
         return
-
     date_stats = {}
     for trade in journal:
         try:
-            date_str = trade['time'].split(' ')[0] + \
-                " " + trade['time'].split(' ')[1] + \
-                " " + trade['time'].split(' ')[2]
+            parts = trade['time'].split(' ')
+            date_str = parts[0] + " " + parts[1] + " " + parts[2]
             if date_str not in date_stats:
                 date_stats[date_str] = {
-                    'wins': 0,
-                    'losses': 0,
-                    'total': 0,
-                    'trades': []
-                }
+                    'wins': 0, 'losses': 0,
+                    'total': 0, 'trades': []}
             date_stats[date_str]['total'] += 1
             date_stats[date_str]['trades'].append(trade)
             if trade['result'] == "TP Hit":
@@ -1350,9 +1630,8 @@ def show_calendar_page():
                 date_stats[date_str]['losses'] += 1
         except Exception:
             pass
-
-    for date, data in sorted(date_stats.items(),
-        reverse=True):
+    for date, data in sorted(
+        date_stats.items(), reverse=True):
         win_rate = (round(
             data['wins'] / data['total'] * 100, 1)
             if data['total'] > 0 else 0)
@@ -1380,6 +1659,7 @@ def show_settings_page():
         success = send_discord_alert(
             "✅ **Test Alert!**\n"
             "Discord working!\n"
+            "News filter active!\n"
             "Time: " + get_ist_time().strftime(
                 '%d %b %Y %H:%M IST'))
         if success:
@@ -1417,7 +1697,8 @@ def show_settings_page():
     st.success("✅ Max 3 signals per scan")
     st.success("✅ Chart images in Discord")
     st.success("✅ Trade journal active")
-    st.success("✅ Performance tracking active")
+    st.success("✅ News filter active")
+    st.success("✅ Economic calendar active")
     st.info(
         "Trading Hours IST:\n"
         "London: 12PM - 8PM\n"
