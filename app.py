@@ -52,7 +52,6 @@ div[data-testid="stExpander"] {
     border-radius: 12px !important;
     backdrop-filter: blur(10px) !important;
     margin-bottom: 8px !important;
-    transition: all 0.3s ease !important;
 }
 
 div[data-testid="stExpander"]:hover {
@@ -65,7 +64,6 @@ div[data-testid="stMetric"] {
     border: 1px solid rgba(0,255,136,0.15) !important;
     border-radius: 10px !important;
     padding: 12px !important;
-    transition: all 0.3s ease !important;
 }
 
 div[data-testid="stMetricValue"] {
@@ -154,31 +152,6 @@ div[data-testid="stProgress"] > div > div {
     text-shadow: 0 0 10px rgba(0,255,136,0.5),
                  0 0 20px rgba(0,255,136,0.3) !important;
 }
-
-.pair-on {
-    background: rgba(0,255,136,0.1);
-    border: 1px solid rgba(0,255,136,0.5);
-    border-radius: 10px;
-    padding: 8px;
-    text-align: center;
-    font-family: 'Orbitron', monospace;
-    color: #00FF88;
-    font-size: 0.85em;
-    margin-bottom: 6px;
-    cursor: pointer;
-}
-
-.pair-off {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 8px;
-    text-align: center;
-    font-family: 'Orbitron', monospace;
-    color: #445566;
-    font-size: 0.85em;
-    margin-bottom: 6px;
-}
 </style>
 """
 
@@ -205,52 +178,19 @@ def get_current_session():
         return "New York"
     return "Off Session"
 
-def is_good_session():
-    session = get_current_session()
-    return session in [
-        "Asia", "London",
-        "London + NY Overlap", "New York"]
-
 def get_session_quality():
     session = get_current_session()
     if session == "London + NY Overlap":
         return "BEST", session
-    elif session in ["London", "New York"]:
+    elif session in ["London","New York"]:
         return "GOOD", session
     elif session == "Asia":
         return "MODERATE", session
     return "POOR", session
 
-def check_internet():
-    try:
-        requests.get("https://8.8.8.8",
-            timeout=3)
-        return True
-    except Exception:
-        try:
-            requests.get("https://www.google.com",
-                timeout=3)
-            return True
-        except Exception:
-            return False
-
-def handle_startup_reconnect():
-    was_running = st.session_state.get(
-        'scanner_was_running_before_disconnect', False)
-    disconnected = st.session_state.get(
-        'was_disconnected', False)
-    if was_running and disconnected:
-        st.session_state.scanner_running = True
-        st.session_state.scanner_was_running_before_disconnect = False
-        st.session_state.was_disconnected = False
-        st.session_state.last_scan_time = None
-        send_discord_alert(
-            "🟢 **NETWORK RECONNECTED!**\n"
-            "AI Trading Scanner AUTO-RESUMED!\n"
-            "Scanner was paused due to network loss.\n"
-            "All systems back online!\n"
-            "Time: " + get_ist_time().strftime(
-                '%d %b %Y %H:%M IST'))
+def is_good_session():
+    quality, _ = get_session_quality()
+    return quality != "POOR"
 
 def init_supabase():
     try:
@@ -829,14 +769,11 @@ def generate_professional_chart(df, signal, fvg_zones,
         ema50 = display_df['Close'].ewm(span=50,adjust=False).mean()
 
         ax_main.plot(range(n), ema8,
-            color=YELLOW, linewidth=0.8, alpha=0.7,
-            label='EMA8')
+            color=YELLOW, linewidth=0.8, alpha=0.7, label='EMA8')
         ax_main.plot(range(n), ema21,
-            color=BLUE, linewidth=0.8, alpha=0.7,
-            label='EMA21')
+            color=BLUE, linewidth=0.8, alpha=0.7, label='EMA21')
         ax_main.plot(range(n), ema50,
-            color=PURPLE, linewidth=0.8, alpha=0.7,
-            label='EMA50')
+            color=PURPLE, linewidth=0.8, alpha=0.7, label='EMA50')
 
         for i in range(n):
             o = float(display_df['Open'].iloc[i])
@@ -966,9 +903,8 @@ def generate_professional_chart(df, signal, fvg_zones,
             fontweight='bold', va='center',
             fontfamily='monospace',
             bbox=dict(boxstyle='round,pad=0.4',
-                facecolor=BG2,
-                edgecolor=YELLOW, alpha=0.9,
-                linewidth=1.5))
+                facecolor=BG2, edgecolor=YELLOW,
+                alpha=0.9, linewidth=1.5))
 
         if bull_bos:
             sh_level = signal.get('swing_high_level', entry)
@@ -1016,17 +952,15 @@ def generate_professional_chart(df, signal, fvg_zones,
                  "A" if signal['score']>=80 else
                  "B" if signal['score']>=70 else "C")
         dir_arrow = '▲ LONG' if is_buy else '▼ SHORT'
-        session_quality = signal.get('session_quality','GOOD')
-        sq_color = (GREEN if session_quality=="BEST" else
-                    YELLOW if session_quality=="GOOD" else
-                    GRAY)
+        sq = signal.get('session_quality','GOOD')
+        sq_s = "⭐⭐⭐" if sq=="BEST" else "⭐⭐" if sq=="GOOD" else "⭐"
 
         ax_main.set_title(
             f"{signal['pair']}  |  {dir_arrow}  |  "
             f"Score: {signal['score']}%  |  Grade: {grade}  |  "
             f"HTF: {signal['htf_bias']}  |  "
             f"ADX: {signal.get('adx','N/A')}  |  "
-            f"Session: {signal['session']} [{session_quality}]",
+            f"Session: {signal['session']} {sq_s}",
             color=WHITE, fontsize=11,
             fontweight='bold', pad=12,
             fontfamily='monospace', loc='left')
@@ -1047,9 +981,9 @@ def generate_professional_chart(df, signal, fvg_zones,
             vol_colors = []
             vols = []
             for i in range(n):
-                o = float(display_df['Open'].iloc[i])
-                c_val = float(display_df['Close'].iloc[i])
-                vol_colors.append(GREEN if c_val>=o else RED)
+                o_v = float(display_df['Open'].iloc[i])
+                c_v = float(display_df['Close'].iloc[i])
+                vol_colors.append(GREEN if c_v>=o_v else RED)
                 try:
                     v = float(display_df['Volume'].iloc[i])
                     vols.append(v if not np.isnan(v) else 0)
@@ -1150,16 +1084,14 @@ def generate_professional_chart(df, signal, fvg_zones,
             f"Market: {signal['regime']}  ")
         info2 = "  ✅  " + reasons_str + "  "
         ax_info.text(0, 0.75, info1,
-            color=GRAY, fontsize=8,
-            ha='left', va='center',
+            color=GRAY, fontsize=8, ha='left', va='center',
             fontfamily='monospace',
             transform=ax_info.transAxes,
             bbox=dict(boxstyle='round,pad=0.4',
                 facecolor=BG2, edgecolor='#21262D',
                 alpha=0.9))
         ax_info.text(0, 0.2, info2,
-            color=GREEN, fontsize=8,
-            ha='left', va='center',
+            color=GREEN, fontsize=8, ha='left', va='center',
             fontfamily='monospace',
             transform=ax_info.transAxes,
             bbox=dict(boxstyle='round,pad=0.4',
@@ -1180,8 +1112,7 @@ def generate_professional_chart(df, signal, fvg_zones,
             f"AI Trading Scanner  ·  {signal['time']}  ·  "
             f"Confluences: {signal['confluences']}",
             color='#333333', fontsize=7,
-            ha='right', va='top',
-            fontfamily='monospace')
+            ha='right', va='top', fontfamily='monospace')
 
         plt.subplots_adjust(
             left=0.02, right=0.97,
@@ -1198,28 +1129,9 @@ def generate_professional_chart(df, signal, fvg_zones,
     except Exception:
         return None
 
-def get_asia_session_pairs():
-    return ["USDJPY","EURJPY","GBPJPY","AUDCAD","XAUUSD"]
-
-def get_session_min_score():
-    session_quality, session = get_session_quality()
-    if session_quality == "BEST":
-        return 80
-    elif session_quality == "GOOD":
-        return 80
-    elif session_quality == "MODERATE":
-        return 88
-    return 95
-
 def analyze_pair_advanced(symbol):
     try:
-        session_quality, session_name = get_session_quality()
-
-        if session_quality == "POOR":
-            return None
-
-        is_asia = session_quality == "MODERATE"
-        if is_asia and symbol not in get_asia_session_pairs():
+        if not is_good_session():
             return None
 
         df_5m = get_data(symbol, interval="5m")
@@ -1231,6 +1143,7 @@ def analyze_pair_advanced(symbol):
         neg = []
         confluences = 0
 
+        session_quality, session_name = get_session_quality()
         htf_bias = get_htf_bias_advanced(symbol)
         regime, adx_val = detect_market_regime_advanced(df_5m)
         rsi = calculate_rsi(df_5m)
@@ -1350,29 +1263,20 @@ def analyze_pair_advanced(symbol):
                 score -= 10; neg.append("Opposing Pattern")
 
         if session_quality == "BEST":
-            score += 10
-            reasons.append("Best Session - London+NY Overlap")
+            score += 10; reasons.append("Best Session ⭐⭐⭐")
         elif session_quality == "GOOD":
-            score += 5
-            reasons.append(session_name+" Session")
+            score += 5; reasons.append(session_name+" Session")
         elif session_quality == "MODERATE":
-            score += 0
-            reasons.append("Asia Session")
-            neg.append("Moderate Session")
+            score += 0; reasons.append("Asia Session")
 
         news = st.session_state.get('cached_news', [])
         if [n for n in news if n['impact']==3]:
             score -= 20; neg.append("High Impact News!")
 
-        min_confluences = 5 if is_asia else 4
-        if confluences < min_confluences:
+        if confluences < 4:
             return None
 
         score = min(max(score,0), 95)
-
-        min_score = get_session_min_score()
-        if score < min_score and not is_asia:
-            pass
 
         sl = calculate_structure_sl_advanced(
             df_5m, direction, atr, swing_highs, swing_lows)
@@ -1461,11 +1365,11 @@ def check_signal_outcomes():
                                 j['pnl'] = trade['rr']
                         send_discord_alert(
                             "✅ **TP HIT! TRADE WON!** 🎯\n\n"
-                            "**" + trade['pair'] + " BUY**\n"
-                            "Entry: " + str(entry) + "\n"
-                            "TP: " + str(tp) + "\n"
-                            "RR: 1:" + str(trade['rr']) + "\n"
-                            "Time: " + get_ist_time().strftime('%H:%M IST'))
+                            "**"+trade['pair']+" BUY**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "TP: "+str(tp)+"\n"
+                            "RR: 1:"+str(trade['rr'])+"\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
                     elif cl <= sl:
                         for j in st.session_state.trade_journal:
                             if j['id'] == trade['id']:
@@ -1473,10 +1377,10 @@ def check_signal_outcomes():
                                 j['pnl'] = -1
                         send_discord_alert(
                             "❌ **SL HIT! TRADE LOST!**\n\n"
-                            "**" + trade['pair'] + " BUY**\n"
-                            "Entry: " + str(entry) + "\n"
-                            "SL: " + str(sl) + "\n"
-                            "Time: " + get_ist_time().strftime('%H:%M IST'))
+                            "**"+trade['pair']+" BUY**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "SL: "+str(sl)+"\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
                 else:
                     if cl <= tp:
                         for j in st.session_state.trade_journal:
@@ -1485,11 +1389,11 @@ def check_signal_outcomes():
                                 j['pnl'] = trade['rr']
                         send_discord_alert(
                             "✅ **TP HIT! TRADE WON!** 🎯\n\n"
-                            "**" + trade['pair'] + " SELL**\n"
-                            "Entry: " + str(entry) + "\n"
-                            "TP: " + str(tp) + "\n"
-                            "RR: 1:" + str(trade['rr']) + "\n"
-                            "Time: " + get_ist_time().strftime('%H:%M IST'))
+                            "**"+trade['pair']+" SELL**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "TP: "+str(tp)+"\n"
+                            "RR: 1:"+str(trade['rr'])+"\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
                     elif ch >= sl:
                         for j in st.session_state.trade_journal:
                             if j['id'] == trade['id']:
@@ -1497,10 +1401,10 @@ def check_signal_outcomes():
                                 j['pnl'] = -1
                         send_discord_alert(
                             "❌ **SL HIT! TRADE LOST!**\n\n"
-                            "**" + trade['pair'] + " SELL**\n"
-                            "Entry: " + str(entry) + "\n"
-                            "SL: " + str(sl) + "\n"
-                            "Time: " + get_ist_time().strftime('%H:%M IST'))
+                            "**"+trade['pair']+" SELL**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "SL: "+str(sl)+"\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
             except Exception:
                 pass
     except Exception:
@@ -1517,7 +1421,7 @@ def format_discord_message(signal):
         if signal['direction']=="BUY"
         else "📍 **Enter SELL at or above: "+str(signal['entry'])+"**")
     sq = signal.get('session_quality','GOOD')
-    sq_emoji = "⭐⭐⭐" if sq=="BEST" else "⭐⭐" if sq=="GOOD" else "⭐"
+    sq_s = "⭐⭐⭐" if sq=="BEST" else "⭐⭐" if sq=="GOOD" else "⭐"
     msg = (
         "🚨 **HIGH CONFIDENCE SIGNAL** 🚨\n\n"
         "**"+emoji+" "+signal['pair']+"**\n\n"
@@ -1526,7 +1430,7 @@ def format_discord_message(signal):
         "🔗 Confluences: "+str(signal['confluences'])+"\n"
         "📐 Pattern: "+signal.get('candle_pattern','N/A')+"\n"
         "📉 ADX: "+str(signal.get('adx','N/A'))+"\n"
-        "🕐 Session: "+signal['session']+" "+sq_emoji+"\n\n"
+        "🕐 Session: "+signal['session']+" "+sq_s+"\n\n"
         +instr+"\n"
         "💰 Entry: "+str(signal['entry'])+"\n"
         "🛑 SL: "+str(signal['sl'])+"\n"
@@ -1597,11 +1501,15 @@ def calculate_stats():
     }
 
 def get_active_pairs():
-    enabled = st.session_state.get('enabled_pairs', {})
-    if not enabled:
-        return ALL_PAIRS
-    active = [p for p in ALL_PAIRS if enabled.get(p, True)]
+    enabled = st.session_state.get(
+        'enabled_pairs', {p:True for p in ALL_PAIRS})
+    active = [p for p in ALL_PAIRS if enabled.get(p,True)]
     return active if active else ALL_PAIRS
+
+def keep_alive():
+    if 'last_keepalive' not in st.session_state:
+        st.session_state.last_keepalive = get_ist_time()
+    st.session_state.last_keepalive = get_ist_time()
 
 for key, val in [
     ('scanner_running',False),
@@ -1620,9 +1528,8 @@ for key, val in [
     ('show_reset',False),
     ('last_outcome_check',None),
     ('enabled_pairs',{p:True for p in ALL_PAIRS}),
-    ('scanner_was_running_before_disconnect',False),
-    ('was_disconnected',False),
-    ('startup_check_done',False)
+    ('scan_interval_minutes',5),
+    ('last_keepalive',None)
 ]:
     if key not in st.session_state:
         st.session_state[key] = val
@@ -1642,19 +1549,13 @@ def run_scan():
     refresh_news()
     check_signal_outcomes()
     active_pairs = get_active_pairs()
-    session_quality, _ = get_session_quality()
-    if session_quality == "MODERATE":
-        asia_pairs = get_asia_session_pairs()
-        active_pairs = [p for p in active_pairs
-            if p in asia_pairs]
     found = []
     new_high = []
     for pair in active_pairs:
         result = analyze_pair_advanced(pair)
         if result:
             found.append(result)
-            min_score = get_session_min_score()
-            if result['score'] >= min_score:
+            if result['score'] >= 80:
                 sig_id = get_signal_id(result)
                 if sig_id not in st.session_state.sent_signal_ids:
                     new_high.append(result)
@@ -1692,13 +1593,16 @@ def run_scan():
 
 def auto_scan():
     try:
+        keep_alive()
         now = get_ist_time()
+        scan_secs = st.session_state.get(
+            'scan_interval_minutes', 5) * 60
         if st.session_state.last_scan_time is None:
             run_scan()
             return
         elapsed = int((now-st.session_state.last_scan_time
             ).total_seconds())
-        if elapsed >= st.session_state.next_scan_seconds:
+        if elapsed >= scan_secs:
             run_scan()
         last_check = st.session_state.last_outcome_check
         if (last_check is None or
@@ -1710,11 +1614,7 @@ def auto_scan():
 
 def main():
     st.markdown(CYBER_CSS, unsafe_allow_html=True)
-
-    if not st.session_state.startup_check_done:
-        st.session_state.startup_check_done = True
-        handle_startup_reconnect()
-
+    keep_alive()
     if not st.session_state.logged_in:
         show_login_page()
     else:
@@ -1737,8 +1637,8 @@ def show_login_page():
             letter-spacing:4px; margin-bottom:8px'>
         PROFESSIONAL FOREX & INDICES INTELLIGENCE</div>
         <div style='font-family:Exo 2,sans-serif;
-            color:rgba(0,255,136,0.4);
-            font-size:0.8em; letter-spacing:2px'>
+            color:rgba(0,255,136,0.4); font-size:0.8em;
+            letter-spacing:2px'>
         XAUUSD · EURUSD · GBPUSD · USDJPY · GBPJPY ·
         EURJPY · AUDCAD · US30 · NAS100</div>
     </div>
@@ -1842,19 +1742,19 @@ def show_login_page():
             border-radius:10px; padding:10px 15px;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.82em'>
-            📊 5-Panel Charts</div>
+            📊 Professional Charts</div>
         <div style='background:rgba(0,255,136,0.05);
             border:1px solid rgba(0,255,136,0.2);
             border-radius:10px; padding:10px 15px;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.82em'>
-            🌏 Asia+London+NY Sessions</div>
+            🎯 Custom Pair Selection</div>
         <div style='background:rgba(0,255,136,0.05);
             border:1px solid rgba(0,255,136,0.2);
             border-radius:10px; padding:10px 15px;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.82em'>
-            🎯 Pair Selection Control</div>
+            🔔 Auto TP/SL Tracking</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1900,7 +1800,7 @@ def show_dashboard():
         sq_color = ("#00FF88" if session_quality=="BEST"
             else "#FFAA00" if session_quality in ["GOOD","MODERATE"]
             else "#FF4444")
-        sq_emoji = ("⭐⭐⭐" if session_quality=="BEST"
+        sq_s = ("⭐⭐⭐" if session_quality=="BEST"
             else "⭐⭐" if session_quality=="GOOD"
             else "⭐" if session_quality=="MODERATE"
             else "⚠️")
@@ -1911,7 +1811,7 @@ def show_dashboard():
             text-align:center; margin:4px 0;
             font-family:Exo 2,sans-serif;
             color:{sq_color}; font-size:0.82em'>
-            {sq_emoji} {session_name}
+            {sq_s} {session_name}
         </div>
         """, unsafe_allow_html=True)
 
@@ -1925,7 +1825,7 @@ def show_dashboard():
             text-align:center; margin:4px 0;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.78em'>
-            📡 Scanning {len(active_pairs)}/9 pairs
+            📡 {len(active_pairs)}/9 pairs active
         </div>
         """, unsafe_allow_html=True)
 
@@ -1980,29 +1880,11 @@ def show_main_dashboard():
     news = st.session_state.get('cached_news',[])
     high_impact = [n for n in news if n['impact']==3]
     stats = calculate_stats()
-    active_pairs = get_active_pairs()
-
-    if st.session_state.get('was_disconnected', False) == False and \
-       st.session_state.get('scanner_was_running_before_disconnect', False):
-        st.success("🟢 Network reconnected! Scanner auto-resumed!")
 
     if high_impact:
         st.error("🚨 HIGH IMPACT NEWS — Signals paused!")
-
-    if session_quality == "MODERATE":
-        st.markdown("""
-        <div style='background:rgba(255,170,0,0.08);
-            border:1px solid rgba(255,170,0,0.3);
-            border-radius:10px; padding:10px;
-            margin-bottom:10px;
-            font-family:Exo 2,sans-serif;
-            color:#FFAA00; font-size:0.9em'>
-            ⭐ Asia Session Active — Only JPY/XAU pairs
-            scanning with stricter filters (88%+ required)
-        </div>
-        """, unsafe_allow_html=True)
-    elif session_quality == "POOR":
-        st.warning("⚠️ Off Session — Scanner paused, waiting for Asia/London/NY")
+    if session_quality == "POOR":
+        st.warning("⚠️ Off Session — No active sessions right now")
 
     col1, col2, col3 = st.columns([1,1,1])
     with col2:
@@ -2028,21 +1910,16 @@ def show_main_dashboard():
                 st.session_state.scanner_running = True
                 st.session_state.last_scan_time = None
                 st.session_state.sent_signal_ids = set()
-                st.session_state.scanner_was_running_before_disconnect = False
                 active = get_active_pairs()
                 send_discord_alert(
                     "🟢 **AI Trading Scanner ACTIVATED!**\n"
-                    "Advanced SMC+ICT+ADX+EMA Analysis\n"
-                    "Session: " + session_name +
-                    " [" + session_quality + "]\n"
-                    "Scanning " + str(len(active)) + " pairs: " +
-                    ", ".join(active) + "\n"
+                    "Session: "+session_name+" ["+session_quality+"]\n"
+                    "Scanning "+str(len(active))+" pairs: "+
+                    ", ".join(active)+"\n"
+                    "Interval: "+str(st.session_state.get('scan_interval_minutes',5))+" min\n"
                     "Auto TP/SL tracking: Active!\n"
-                    "⚠️ Network disconnect → Scanner auto-pauses\n"
-                    "⚠️ Network reconnect → Scanner auto-resumes\n"
-                    "User: " + str(st.session_state.user_email) +
-                    "\nTime: " + get_ist_time().strftime(
-                        '%d %b %Y %H:%M IST'))
+                    "User: "+str(st.session_state.user_email)+
+                    "\nTime: "+get_ist_time().strftime('%d %b %Y %H:%M IST'))
                 st.rerun()
         else:
             st.markdown("""
@@ -2065,11 +1942,10 @@ def show_main_dashboard():
             if st.button("⏹ DEACTIVATE SCANNER",
                 use_container_width=True):
                 st.session_state.scanner_running = False
-                st.session_state.scanner_was_running_before_disconnect = False
                 send_discord_alert(
                     "🔴 **AI Trading Scanner DEACTIVATED!**\n"
-                    "Scans: " + str(st.session_state.total_scans) +
-                    "\nAlerts: " + str(st.session_state.alerts_sent))
+                    "Scans: "+str(st.session_state.total_scans)+
+                    "\nAlerts: "+str(st.session_state.alerts_sent))
                 st.rerun()
 
     st.divider()
@@ -2088,17 +1964,17 @@ def show_main_dashboard():
     st.divider()
 
     if st.session_state.scanner_running:
+        scan_secs = st.session_state.get(
+            'scan_interval_minutes', 5) * 60
         if st.session_state.last_scan_time:
             elapsed = int((get_ist_time()-
                 st.session_state.last_scan_time).total_seconds())
-            remaining = max(0,
-                st.session_state.next_scan_seconds-elapsed)
-            progress_val = min(1.0,
-                elapsed/st.session_state.next_scan_seconds)
+            remaining = max(0, scan_secs-elapsed)
+            progress_val = min(1.0, elapsed/scan_secs)
             st.info("⏱️ Last: " +
                 st.session_state.last_scan_time.strftime('%H:%M:%S IST') +
-                " | Next in: " + str(remaining) + "s" +
-                " | Session: " + session_name)
+                " | Next in: "+str(remaining)+"s" +
+                " | Session: "+session_name)
             st.progress(progress_val)
         else:
             st.info("⚡ Initializing first scan...")
@@ -2108,7 +1984,7 @@ def show_main_dashboard():
             if st.button("⚡ SCAN NOW",
                 type="primary",
                 use_container_width=True):
-                with st.spinner("Advanced scanning..."):
+                with st.spinner("Scanning..."):
                     run_scan()
                 st.success("✅ Complete!")
                 st.rerun()
@@ -2122,7 +1998,7 @@ def show_main_dashboard():
     <div style='font-family:Orbitron,monospace;
         color:#00FF88; font-size:0.85em;
         letter-spacing:2px; margin-bottom:12px;
-        opacity:0.8'>📡 ACTIVE PAIRS</div>
+        opacity:0.8'>📡 PAIR STATUS</div>
     """, unsafe_allow_html=True)
 
     enabled = st.session_state.get(
@@ -2134,15 +2010,18 @@ def show_main_dashboard():
             color = "#00FF88" if is_on else "#445566"
             bg = "rgba(0,255,136,0.08)" if is_on else "rgba(255,255,255,0.02)"
             border = "rgba(0,255,136,0.4)" if is_on else "rgba(255,255,255,0.08)"
+            status = "ON ✅" if is_on else "OFF ❌"
             st.markdown(f"""
             <div style='background:{bg};
                 border:1px solid {border};
-                border-radius:10px; padding:10px;
-                text-align:center; margin-bottom:8px;
+                border-radius:10px; padding:8px;
+                text-align:center; margin-bottom:6px;
                 font-family:Orbitron,monospace;
-                color:{color}; font-size:0.85em;
-                letter-spacing:1px'>{pair}
-                {"✅" if is_on else "❌"}
+                color:{color}; font-size:0.8em;
+                letter-spacing:1px'>
+                {pair}<br>
+                <span style='font-size:0.75em;
+                    opacity:0.8'>{status}</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -2253,14 +2132,13 @@ def show_signals_page():
             age = get_signal_age(signal['time'])
             status = get_signal_status(age)
             sq = signal.get('session_quality','GOOD')
-            sq_badge = ("⭐⭐⭐" if sq=="BEST" else
-                        "⭐⭐" if sq=="GOOD" else "⭐")
+            sq_s = "⭐⭐⭐" if sq=="BEST" else "⭐⭐" if sq=="GOOD" else "⭐"
             with st.expander(
                 "🟢 "+signal['pair']+" "+
                 signal['direction']+"  |  "+
                 str(signal['score'])+"%  |  "+
                 str(signal['confluences'])+" conf  |  "+
-                sq_badge+"  |  "+status):
+                sq_s+"  |  "+status):
                 col1,col2,col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -2319,8 +2197,7 @@ def show_signals_page():
         🔴 LOW — Below 60%</div>
         """, unsafe_allow_html=True)
         for signal in low:
-            st.write("🔴 "+signal['pair']+
-                " | "+str(signal['score'])+"%")
+            st.write("🔴 "+signal['pair']+" | "+str(signal['score'])+"%")
 
 def show_journal_page():
     st.markdown("""
@@ -2520,7 +2397,7 @@ def show_settings_page():
     <div style='background:rgba(0,255,136,0.05);
         border:1px solid rgba(0,255,136,0.2);
         border-radius:12px; padding:15px 20px;
-        margin-bottom:20px;
+        margin-bottom:15px;
         font-family:Exo 2,sans-serif'>
         <div style='color:#8899AA;
             font-size:0.85em; margin-bottom:5px'>
@@ -2530,51 +2407,44 @@ def show_settings_page():
     </div></div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div style='background:rgba(255,170,0,0.05);
-        border:1px solid rgba(255,170,0,0.2);
-        border-radius:12px; padding:15px;
-        margin-bottom:15px;
-        font-family:Exo 2,sans-serif'>
-        <div style='color:#FFAA00; font-size:0.9em;
-            font-weight:bold; margin-bottom:8px'>
-        ⚠️ ABOUT NETWORK DISCONNECT</div>
-        <div style='color:#8899AA; font-size:0.85em'>
-        When internet disconnects, Streamlit app pauses
-        completely — so it cannot send Discord alerts
-        during disconnection. This is a platform limitation.<br><br>
-        ✅ <b>What we do:</b> When you reconnect and
-        app restarts, scanner auto-resumes and sends
-        a reconnect alert to Discord automatically!
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
     st.divider()
+
     st.subheader("📡 Pair Selection")
-    st.write("Toggle pairs to include/exclude from scanning:")
+    st.write("Toggle ON/OFF which pairs to scan:")
 
     enabled = st.session_state.get(
         'enabled_pairs', {p:True for p in ALL_PAIRS})
     changed = False
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("✅ Enable All Pairs",
+        if st.button("✅ Enable All",
             use_container_width=True):
             for p in ALL_PAIRS:
                 enabled[p] = True
             st.session_state.enabled_pairs = enabled
             st.rerun()
     with col2:
-        if st.button("❌ Disable All Pairs",
+        if st.button("❌ Disable All",
             use_container_width=True):
             for p in ALL_PAIRS:
                 enabled[p] = False
             st.session_state.enabled_pairs = enabled
             st.rerun()
+    with col3:
+        active_count = len(
+            [p for p in ALL_PAIRS if enabled.get(p,True)])
+        st.markdown(f"""
+        <div style='text-align:center;
+            padding:8px;
+            font-family:Orbitron,monospace;
+            color:#00FF88; font-size:0.9em'>
+            {active_count}/9 ON
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
+
     cols = st.columns(3)
     for i, pair in enumerate(ALL_PAIRS):
         with cols[i % 3]:
@@ -2589,24 +2459,51 @@ def show_settings_page():
 
     if changed:
         st.session_state.enabled_pairs = enabled
-        active = [p for p in ALL_PAIRS if enabled.get(p, True)]
-        st.success("✅ Now scanning: " + ", ".join(active))
+        active = [p for p in ALL_PAIRS
+            if enabled.get(p, True)]
+        st.success("✅ Now scanning: " +
+            (", ".join(active) if active else "None"))
         st.rerun()
 
-    active_count = len([p for p in ALL_PAIRS if enabled.get(p, True)])
-    st.markdown(f"""
-    <div style='background:rgba(0,255,136,0.05);
-        border:1px solid rgba(0,255,136,0.15);
-        border-radius:10px; padding:10px;
-        font-family:Exo 2,sans-serif;
-        color:#8899AA; font-size:0.85em;
-        text-align:center; margin-top:10px'>
-        📡 Currently scanning <b style='color:#00FF88'>
-        {active_count}</b> out of 9 pairs
-    </div>
-    """, unsafe_allow_html=True)
+    active_pairs = [p for p in ALL_PAIRS if enabled.get(p,True)]
+    if active_pairs:
+        st.markdown(f"""
+        <div style='background:rgba(0,255,136,0.05);
+            border:1px solid rgba(0,255,136,0.15);
+            border-radius:10px; padding:10px;
+            font-family:Exo 2,sans-serif;
+            color:#8899AA; font-size:0.85em;
+            margin-top:5px'>
+            📡 Active pairs: <span style='color:#00FF88'>
+            {" · ".join(active_pairs)}</span>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.error("⚠️ No pairs selected! Please enable at least one pair.")
 
     st.divider()
+
+    st.subheader("⏱️ Scan Interval")
+    current_interval = st.session_state.get(
+        'scan_interval_minutes', 5)
+    st.write("Current interval: **" +
+        str(current_interval) + " minutes**")
+    scan_interval = st.selectbox(
+        "Choose scan interval:",
+        [1, 2, 3, 5, 10, 15, 30],
+        index=[1,2,3,5,10,15,30].index(current_interval)
+        if current_interval in [1,2,3,5,10,15,30] else 3,
+        key="scan_interval_select")
+    if st.button("💾 Save Scan Interval",
+        use_container_width=True,
+        type="primary"):
+        st.session_state.scan_interval_minutes = scan_interval
+        st.session_state.next_scan_seconds = scan_interval * 60
+        st.success("✅ Scan interval set to " +
+            str(scan_interval) + " minutes!")
+
+    st.divider()
+
     st.subheader("🔔 Discord")
     if st.button("🔔 Test Discord Alert",
         use_container_width=True):
@@ -2614,29 +2511,20 @@ def show_settings_page():
         success = send_discord_alert(
             "✅ **System Test — AI Trading Scanner**\n"
             "All systems operational!\n"
-            "Active pairs: " + ", ".join(active) + "\n"
-            "Session: " + get_current_session() + "\n"
-            "User: " + str(st.session_state.user_email) +
-            "\nTime: " + get_ist_time().strftime(
-                '%d %b %Y %H:%M IST'))
+            "Active pairs: "+", ".join(active)+"\n"
+            "Scan interval: "+str(st.session_state.get('scan_interval_minutes',5))+" min\n"
+            "Session: "+get_current_session()+"\n"
+            "User: "+str(st.session_state.user_email)+
+            "\nTime: "+get_ist_time().strftime('%d %b %Y %H:%M IST'))
         if success:
             st.success("✅ Discord working!")
         else:
             st.error("❌ Discord failed!")
 
     st.divider()
-    st.subheader("⏱️ Scan Interval")
-    scan_interval = st.selectbox(
-        "Minutes between scans",
-        [1,2,3,5,10,15], index=3)
-    if st.button("💾 Save",
-        use_container_width=True):
-        st.session_state.next_scan_seconds = scan_interval*60
-        st.success("✅ Set to "+str(scan_interval)+" min!")
 
-    st.divider()
     st.subheader("🗑️ Data Management")
-    col1,col2 = st.columns(2)
+    col1, col2 = st.columns(2)
     with col1:
         if st.button("Clear Alert History",
             use_container_width=True):
@@ -2649,29 +2537,51 @@ def show_settings_page():
             st.success("Cleared!")
 
     st.divider()
-    st.subheader("🌏 Session Rules")
+
+    st.subheader("🌐 About Session Auto-Logout")
+    st.markdown("""
+    <div style='background:rgba(255,170,0,0.05);
+        border:1px solid rgba(255,170,0,0.2);
+        border-radius:10px; padding:15px;
+        font-family:Exo 2,sans-serif;
+        color:#8899AA; font-size:0.9em'>
+        <div style='color:#FFAA00; font-weight:bold;
+            margin-bottom:8px'>
+        ⚠️ Why Does App Log Out?</div>
+        Streamlit Cloud has a session timeout.
+        If the browser tab is inactive for too long,
+        the session resets.<br><br>
+        <b style='color:#00FF88'>✅ Solutions:</b><br>
+        1. Keep the browser tab active (don't minimize for hours)<br>
+        2. Set a shorter scan interval (1-2 min) so page stays active<br>
+        3. Use the REFRESH button regularly<br>
+        4. Add app to home screen and keep it open<br>
+        5. Consider Railway.app for 24/7 running (when budget allows)
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    st.subheader("🌏 Session Info")
     st.markdown("""
     <div style='font-family:Exo 2,sans-serif;
         font-size:0.9em'>
         <div style='color:#FFD700; margin-bottom:8px'>
-        ⭐⭐⭐ London+NY Overlap (5:30PM-8PM IST)
-        → All pairs | Min score: 80%</div>
+        ⭐⭐⭐ London+NY Overlap: 5:30PM-8PM IST
+        → Best session</div>
         <div style='color:#00FF88; margin-bottom:8px'>
-        ⭐⭐ London (12PM-5PM IST)
-        → All pairs | Min score: 80%</div>
+        ⭐⭐ London: 12PM-5PM IST → Good</div>
         <div style='color:#00FF88; margin-bottom:8px'>
-        ⭐⭐ New York (9PM-12AM IST)
-        → All pairs | Min score: 80%</div>
+        ⭐⭐ New York: 9PM-12AM IST → Good</div>
         <div style='color:#FFAA00; margin-bottom:8px'>
-        ⭐ Asia (4AM-11AM IST)
-        → JPY+XAU pairs only | Min score: 88%
-        | Min 5 confluences</div>
+        ⭐ Asia: 4AM-11AM IST → Moderate</div>
         <div style='color:#FF4444'>
         ❌ Off Session → Scanner paused</div>
     </div>
     """, unsafe_allow_html=True)
 
     st.divider()
+
     st.subheader("✅ Active Features")
     features = [
         "Advanced BOS with Swing Points",
@@ -2683,17 +2593,17 @@ def show_settings_page():
         "Multi-TF HTF Bias 4H+1H",
         "Structure Dynamic SL",
         "Auto TP/SL Tracking",
-        "Auto Resume After Reconnect",
-        "Discord Reconnect Alerts",
         "5-Panel Professional Charts",
-        "MACD + RSI + Volume Panels",
-        "Pair Toggle Selection",
+        "MACD + RSI + Volume",
+        "Custom Pair Toggle Selection",
+        "Adjustable Scan Interval",
         "Asia Session Support",
-        "Session Quality Scoring",
-        "Min 4-5 confluences",
-        "Max 2 signals per scan",
         "News Impact Filter",
-        "Signal Expiry (30 mins)"
+        "Min 4 confluences",
+        "Max 2 signals per scan",
+        "Signal Expiry 30 mins",
+        "Trade Journal",
+        "Performance Analytics"
     ]
     cols = st.columns(2)
     for i, f in enumerate(features):
