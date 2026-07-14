@@ -22,6 +22,43 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+KEEP_ALIVE_JS = """
+<script>
+// Keep session alive by pinging every 25 seconds
+function keepAlive() {
+    try {
+        fetch(window.location.href, {
+            method: 'HEAD',
+            cache: 'no-cache'
+        }).catch(function() {});
+    } catch(e) {}
+}
+setInterval(keepAlive, 25000);
+
+// Also prevent screen sleep on mobile
+try {
+    if ('wakeLock' in navigator) {
+        navigator.wakeLock.request('screen').then(function(lock) {
+            console.log('Wake lock active');
+        }).catch(function(e) {});
+    }
+} catch(e) {}
+
+// Reload if connection lost
+window.addEventListener('offline', function() {
+    console.log('Connection lost - will reconnect');
+});
+window.addEventListener('online', function() {
+    console.log('Connection restored');
+    setTimeout(function() {
+        window.location.reload();
+    }, 2000);
+});
+
+console.log('Keep-alive active');
+</script>
+"""
+
 CYBER_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap');
@@ -50,7 +87,6 @@ div[data-testid="stExpander"] {
     background: rgba(255,255,255,0.03) !important;
     border: 1px solid rgba(0,255,136,0.15) !important;
     border-radius: 12px !important;
-    backdrop-filter: blur(10px) !important;
     margin-bottom: 8px !important;
 }
 
@@ -162,6 +198,27 @@ ALL_PAIRS = [
     "GBPJPY","GBPUSD","EURUSD",
     "EURJPY","US30","NAS100"
 ]
+
+PAIR_SETTINGS = {
+    "XAUUSD": {"sl_pips": 15, "tp_mult": 2.0, "atr_mult": 0.8},
+    "USDJPY": {"sl_pips": 8,  "tp_mult": 2.0, "atr_mult": 0.6},
+    "AUDCAD": {"sl_pips": 8,  "tp_mult": 2.0, "atr_mult": 0.6},
+    "GBPJPY": {"sl_pips": 12, "tp_mult": 2.0, "atr_mult": 0.7},
+    "GBPUSD": {"sl_pips": 8,  "tp_mult": 2.0, "atr_mult": 0.6},
+    "EURUSD": {"sl_pips": 7,  "tp_mult": 2.0, "atr_mult": 0.6},
+    "EURJPY": {"sl_pips": 10, "tp_mult": 2.0, "atr_mult": 0.7},
+    "US30":   {"sl_pips": 30, "tp_mult": 2.0, "atr_mult": 1.0},
+    "NAS100": {"sl_pips": 25, "tp_mult": 2.0, "atr_mult": 1.0},
+}
+
+def get_pip_value(symbol):
+    if symbol == "XAUUSD":
+        return 0.1
+    elif symbol in ["US30","NAS100"]:
+        return 1.0
+    elif "JPY" in symbol:
+        return 0.01
+    return 0.0001
 
 def get_ist_time():
     return datetime.now(IST)
@@ -704,31 +761,369 @@ def is_price_in_pd_zone(df, direction):
     except Exception:
         return True
 
-def calculate_structure_sl_advanced(df, direction,
-    atr, swing_highs, swing_lows):
-    try:
-        close = float(df['Close'].iloc[-1])
-        if direction == "BUY":
-            if swing_lows:
-                sl_level = min([sl[1] for sl in swing_lows[-3:]])
-                sl = sl_level - atr*0.3
+def calculate_scalping_sl_tp(symbol, direction, close, atr, swing_highs, swing_lows):
+    settings = PAIR_SETTINGS.get(symbol, {"sl_pips":10,"tp_mult":2.0,"atr_mult":0.7})
+    pip_value = get_pip_value(symbol)
+    max_sl_price = settings['sl_pips'] * pip_value
+    atr_sl = atr * settings['atr_mult']
+    sl_distance = min(atr_sl, max_sl_price)
+    sl_distance = max(sl_distance, max_sl_price * 0.5)
+    if direction == "BUY":
+        if swing_lows:
+            recent_low = min([sl[1] for sl in swing_lows[-2:]])
+            structure_sl = recent_low - (pip_value * 2)
+            if close - structure_sl <= max_sl_price * 1.5:
+                sl = structure_sl
             else:
-                sl = close - atr*2
-            if close-sl > atr*3:
-                sl = close-atr*2
+                sl = close - sl_distance
         else:
-            if swing_highs:
-                sl_level = max([sh[1] for sh in swing_highs[-3:]])
-                sl = sl_level + atr*0.3
+            sl = close - sl_distance
+        tp = close + (abs(close-sl) * settings['tp_mult'])
+    else:
+        if swing_highs:
+            recent_high = max([sh[1] for sh in swing_highs[-2:]])
+            structure_sl = recent_high + (pip_value * 2)
+            if structure_sl - close <= max_sl_price * 1.5:
+                sl = structure_sl
             else:
-                sl = close+atr*2
-            if sl-close > atr*3:
-                sl = close+atr*2
-        return round(sl, 5)
+                sl = close + sl_distance
+        else:
+            sl = close + sl_distance
+        tp = close - (abs(sl-close) * settings['tp_mult'])
+    sl_pips_actual = abs(close-sl) / pip_value
+    tp_pips_actual = abs(tp-close) / pip_value
+    return round(sl,5), round(tp,5), round(sl_pips_actual,1), round(tp_pips_actual,1)
+
+def analyze_pair_advanced(symbol):
+    try:
+        if not is_good_session():
+            return None
+        df_5m = get_data(symbol, interval="5m")
+        if df_5m is None or len(df_5m) < 60:
+            return None
+
+        score = 0
+        reasons = []
+        neg = []
+        confluences = 0
+
+        session_quality, session_name = get_session_quality()
+        htf_bias = get_htf_bias_advanced(symbol)
+        regime, adx_val = detect_market_regime_advanced(df_5m)
+        rsi = calculate_rsi(df_5m)
+        atr = calculate_atr(df_5m)
+        adx, plus_di, minus_di = calculate_adx(df_5m)
+        candle_pattern, candle_dir = detect_candle_pattern(df_5m)
+
+        bull_bos, bear_bos, sh_level, sl_level = detect_bos_advanced(df_5m)
+        bull_fvg, bear_fvg, fvg_zones = detect_fvg_advanced(df_5m)
+        bull_sweep, bear_sweep = detect_liquidity_sweep_advanced(df_5m)
+        bull_choch, bear_choch = detect_choch_advanced(df_5m)
+        swing_highs, swing_lows = detect_swing_highs_lows(df_5m)
+
+        close = float(df_5m['Close'].iloc[-1])
+        ema8 = float(calculate_ema(df_5m,8).iloc[-1])
+        ema21 = float(calculate_ema(df_5m,21).iloc[-1])
+        ema50 = float(calculate_ema(df_5m,50).iloc[-1])
+
+        is_bull = bull_bos or bull_fvg or bull_sweep or bull_choch or candle_dir=="BULLISH"
+        is_bear = bear_bos or bear_fvg or bear_sweep or bear_choch or candle_dir=="BEARISH"
+
+        if is_bull and not is_bear:
+            direction = "BUY"
+        elif is_bear and not is_bull:
+            direction = "SELL"
+        elif is_bull and is_bear:
+            if htf_bias == "BULLISH":
+                direction = "BUY"
+            elif htf_bias == "BEARISH":
+                direction = "SELL"
+            else:
+                return None
+        else:
+            return None
+
+        ob_found, ob_top, ob_bottom, ob_index = detect_order_block_advanced(df_5m, direction)
+        in_pd = is_price_in_pd_zone(df_5m, direction)
+
+        if htf_bias == "BULLISH" and direction == "BUY":
+            score += 20; reasons.append("HTF Bullish"); confluences += 1
+        elif htf_bias == "BEARISH" and direction == "SELL":
+            score += 20; reasons.append("HTF Bearish"); confluences += 1
+        elif htf_bias == "NEUTRAL":
+            score += 3; neg.append("HTF Neutral")
+        else:
+            score -= 15; neg.append("HTF Conflict")
+
+        if adx > 25:
+            if direction=="BUY" and plus_di>minus_di:
+                score += 15
+                reasons.append("Strong Uptrend ADX:"+str(round(adx,1)))
+                confluences += 1
+            elif direction=="SELL" and minus_di>plus_di:
+                score += 15
+                reasons.append("Strong Downtrend ADX:"+str(round(adx,1)))
+                confluences += 1
+        elif adx < 15:
+            score -= 10; neg.append("Weak Trend")
+
+        if regime == "VOLATILE":
+            score -= 20; neg.append("High Volatility — SKIP!")
+        elif regime == "RANGING" and adx < 20:
+            score -= 10; neg.append("Ranging Market")
+        elif (regime=="TRENDING UP" and direction=="BUY") or \
+             (regime=="TRENDING DOWN" and direction=="SELL"):
+            score += 10; reasons.append("Trend Alignment"); confluences += 1
+
+        if bull_bos and direction=="BUY":
+            score += 18; reasons.append("Bullish BOS"); confluences += 1
+        if bear_bos and direction=="SELL":
+            score += 18; reasons.append("Bearish BOS"); confluences += 1
+        if bull_fvg and direction=="BUY":
+            score += 15; reasons.append("Bullish FVG"); confluences += 1
+        if bear_fvg and direction=="SELL":
+            score += 15; reasons.append("Bearish FVG"); confluences += 1
+        if bull_sweep and direction=="BUY":
+            score += 18; reasons.append("Bullish Liq Sweep"); confluences += 1
+        if bear_sweep and direction=="SELL":
+            score += 18; reasons.append("Bearish Liq Sweep"); confluences += 1
+        if bull_choch and direction=="BUY":
+            score += 12; reasons.append("Bullish CHOCH"); confluences += 1
+        if bear_choch and direction=="SELL":
+            score += 12; reasons.append("Bearish CHOCH"); confluences += 1
+        if ob_found:
+            score += 12; reasons.append("Order Block"); confluences += 1
+        if in_pd:
+            score += 10; reasons.append("P/D Zone"); confluences += 1
+
+        if direction=="BUY":
+            if ema8 > ema21 > ema50:
+                score += 8; reasons.append("EMA Stack Bull"); confluences += 1
+            elif ema8 < ema21:
+                score -= 5; neg.append("EMA Conflict")
+        else:
+            if ema8 < ema21 < ema50:
+                score += 8; reasons.append("EMA Stack Bear"); confluences += 1
+            elif ema8 > ema21:
+                score -= 5; neg.append("EMA Conflict")
+
+        if direction=="BUY":
+            if 20 < rsi < 55:
+                score += 8; reasons.append("RSI Bullish Zone")
+            elif rsi >= 70:
+                score -= 15; neg.append("RSI Overbought")
+        else:
+            if 45 < rsi < 80:
+                score += 8; reasons.append("RSI Bearish Zone")
+            elif rsi <= 30:
+                score -= 15; neg.append("RSI Oversold")
+
+        if (candle_dir=="BULLISH" and direction=="BUY") or \
+           (candle_dir=="BEARISH" and direction=="SELL"):
+            score += 8; reasons.append(candle_pattern)
+        elif candle_dir != "NEUTRAL":
+            if (candle_dir=="BEARISH" and direction=="BUY") or \
+               (candle_dir=="BULLISH" and direction=="SELL"):
+                score -= 10; neg.append("Opposing Pattern")
+
+        if session_quality == "BEST":
+            score += 10; reasons.append("Best Session ⭐⭐⭐")
+        elif session_quality == "GOOD":
+            score += 5; reasons.append(session_name+" Session")
+        elif session_quality == "MODERATE":
+            score += 0; reasons.append("Asia Session")
+
+        news = st.session_state.get('cached_news', [])
+        if [n for n in news if n['impact']==3]:
+            score -= 25
+            neg.append("⚠️ HIGH IMPACT NEWS — DO NOT TRADE!")
+
+        if confluences < 4:
+            return None
+
+        score = min(max(score,0), 95)
+
+        sl, tp, sl_pips, tp_pips = calculate_scalping_sl_tp(
+            symbol, direction, close, atr,
+            swing_highs, swing_lows)
+
+        rr = round(tp_pips / sl_pips, 1) if sl_pips > 0 else 2.0
+
+        pip_val = get_pip_value(symbol)
+        max_lot_guidance = "0.01-0.05 lots"
+        if symbol == "XAUUSD":
+            max_lot_guidance = "0.01-0.02 lots"
+        elif symbol in ["US30","NAS100"]:
+            max_lot_guidance = "0.01 lots"
+        elif symbol in ["GBPJPY","EURJPY"]:
+            max_lot_guidance = "0.01-0.03 lots"
+
+        return {
+            "pair": symbol,
+            "direction": direction,
+            "score": score,
+            "entry": round(close,5),
+            "sl": sl,
+            "tp": tp,
+            "rr": rr,
+            "sl_pips": sl_pips,
+            "tp_pips": tp_pips,
+            "rsi": round(rsi,1),
+            "adx": round(adx,1),
+            "htf_bias": htf_bias,
+            "regime": regime,
+            "session": session_name,
+            "session_quality": session_quality,
+            "confluences": confluences,
+            "reasons": reasons,
+            "negative": neg,
+            "candle_pattern": candle_pattern,
+            "lot_guidance": max_lot_guidance,
+            "time": get_ist_time().strftime('%d %b %Y %H:%M IST'),
+            "current_price": round(close,5),
+            "atr": round(atr,5),
+            "result": "Pending",
+            "df": df_5m,
+            "fvg_zones": fvg_zones,
+            "ob_found": ob_found,
+            "ob_top": ob_top,
+            "ob_bottom": ob_bottom,
+            "ob_index": ob_index,
+            "bull_bos": bull_bos,
+            "bear_bos": bear_bos,
+            "bull_sweep": bull_sweep,
+            "bear_sweep": bear_sweep,
+            "swing_highs": swing_highs,
+            "swing_lows": swing_lows,
+            "swing_high_level": sh_level,
+            "swing_low_level": sl_level
+        }
     except Exception:
-        close = float(df['Close'].iloc[-1])
-        return round(close-atr*2 if direction=="BUY"
-            else close+atr*2, 5)
+        return None
+
+def check_signal_outcomes():
+    try:
+        journal = st.session_state.trade_journal
+        pending = [j for j in journal if j['result']=="Pending"]
+        if not pending:
+            return
+        for trade in pending:
+            try:
+                age = get_signal_age(trade['time'])
+                if age > 120:
+                    for j in st.session_state.trade_journal:
+                        if j['id'] == trade['id']:
+                            j['result'] = "Expired"
+                            j['pnl'] = 0
+                    continue
+                df = get_data(trade['pair'], interval="5m")
+                if df is None:
+                    continue
+                ch = float(df['High'].iloc[-1])
+                cl = float(df['Low'].iloc[-1])
+                entry = trade['entry']
+                sl = trade['sl']
+                tp = trade['tp']
+                direction = trade['direction']
+                if direction == "BUY":
+                    if ch >= tp:
+                        for j in st.session_state.trade_journal:
+                            if j['id'] == trade['id']:
+                                j['result'] = "TP Hit"
+                                j['pnl'] = trade['rr']
+                        send_discord_alert(
+                            "✅ **TP HIT! TRADE WON!** 🎯\n\n"
+                            "**"+trade['pair']+" BUY**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "TP: "+str(tp)+" ("+str(trade.get('tp_pips','?'))+" pips)\n"
+                            "RR: 1:"+str(trade['rr'])+"\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
+                    elif cl <= sl:
+                        for j in st.session_state.trade_journal:
+                            if j['id'] == trade['id']:
+                                j['result'] = "SL Hit"
+                                j['pnl'] = -1
+                        send_discord_alert(
+                            "❌ **SL HIT! TRADE LOST!**\n\n"
+                            "**"+trade['pair']+" BUY**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "SL: "+str(sl)+" ("+str(trade.get('sl_pips','?'))+" pips)\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
+                else:
+                    if cl <= tp:
+                        for j in st.session_state.trade_journal:
+                            if j['id'] == trade['id']:
+                                j['result'] = "TP Hit"
+                                j['pnl'] = trade['rr']
+                        send_discord_alert(
+                            "✅ **TP HIT! TRADE WON!** 🎯\n\n"
+                            "**"+trade['pair']+" SELL**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "TP: "+str(tp)+" ("+str(trade.get('tp_pips','?'))+" pips)\n"
+                            "RR: 1:"+str(trade['rr'])+"\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
+                    elif ch >= sl:
+                        for j in st.session_state.trade_journal:
+                            if j['id'] == trade['id']:
+                                j['result'] = "SL Hit"
+                                j['pnl'] = -1
+                        send_discord_alert(
+                            "❌ **SL HIT! TRADE LOST!**\n\n"
+                            "**"+trade['pair']+" SELL**\n"
+                            "Entry: "+str(entry)+"\n"
+                            "SL: "+str(sl)+" ("+str(trade.get('sl_pips','?'))+" pips)\n"
+                            "Time: "+get_ist_time().strftime('%H:%M IST'))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+def format_discord_message(signal):
+    grade = ("A+" if signal['score']>=90 else
+             "A" if signal['score']>=80 else
+             "B" if signal['score']>=70 else "C")
+    emoji = "🟢 BUY" if signal['direction']=="BUY" else "🔴 SELL"
+    reasons_text = "\n".join(["✅ "+r for r in signal['reasons']])
+    neg_text = "\n".join(["⚠️ "+n for n in signal['negative']])
+    sq = signal.get('session_quality','GOOD')
+    sq_s = "⭐⭐⭐" if sq=="BEST" else "⭐⭐" if sq=="GOOD" else "⭐"
+    sl_pips = signal.get('sl_pips','?')
+    tp_pips = signal.get('tp_pips','?')
+    lot_guide = signal.get('lot_guidance','0.01-0.05 lots')
+    if signal['direction']=="BUY":
+        instr = ("📍 **Place BUY LIMIT at: " + str(signal['entry']) +
+            " or MARKET order NOW**")
+    else:
+        instr = ("📍 **Place SELL LIMIT at: " + str(signal['entry']) +
+            " or MARKET order NOW**")
+    msg = (
+        "🚨 **SCALP SIGNAL** 🚨\n\n"
+        "**"+emoji+" "+signal['pair']+"**\n\n"
+        "📊 Score: "+str(signal['score'])+"% | Grade: "+grade+"\n"
+        "🔗 Confluences: "+str(signal['confluences'])+"\n"
+        "📐 Pattern: "+signal.get('candle_pattern','N/A')+"\n"
+        "📉 ADX: "+str(signal.get('adx','N/A'))+"\n"
+        "🕐 Session: "+signal['session']+" "+sq_s+"\n\n"
+        +instr+"\n\n"
+        "💰 Entry: "+str(signal['entry'])+"\n"
+        "🛑 SL: "+str(signal['sl'])+" ("+str(sl_pips)+" pips)\n"
+        "🎯 TP: "+str(signal['tp'])+" ("+str(tp_pips)+" pips)\n"
+        "⚖️ RR: 1:"+str(signal['rr'])+"\n\n"
+        "💼 **Lot Size Guide:**\n"
+        "Recommended: "+lot_guide+"\n"
+        "⚠️ Max risk per trade: 1-2% of balance!\n\n"
+        "📈 HTF: "+signal['htf_bias']+"\n"
+        "🌍 Market: "+signal['regime']+"\n"
+        "📉 RSI: "+str(signal['rsi'])+"\n\n"
+        "⏰ Time: "+signal['time']+"\n"
+        "🤖 Auto TP/SL tracking active!\n\n"
+        "⚠️ SKIP if price moved >"+str(signal['atr'])+" away!\n"
+        "⚠️ Check news before entering!\n\n"
+        "✅ **Reasons:**\n"+reasons_text+"\n")
+    if signal['negative']:
+        msg += "\n⚠️ **Caution:**\n"+neg_text+"\n"
+    msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
+    return msg
 
 def generate_professional_chart(df, signal, fvg_zones,
     ob_found, ob_top, ob_bottom, ob_index,
@@ -768,12 +1163,12 @@ def generate_professional_chart(df, signal, fvg_zones,
         ema21 = display_df['Close'].ewm(span=21,adjust=False).mean()
         ema50 = display_df['Close'].ewm(span=50,adjust=False).mean()
 
-        ax_main.plot(range(n), ema8,
-            color=YELLOW, linewidth=0.8, alpha=0.7, label='EMA8')
-        ax_main.plot(range(n), ema21,
-            color=BLUE, linewidth=0.8, alpha=0.7, label='EMA21')
-        ax_main.plot(range(n), ema50,
-            color=PURPLE, linewidth=0.8, alpha=0.7, label='EMA50')
+        ax_main.plot(range(n), ema8, color=YELLOW,
+            linewidth=0.8, alpha=0.7, label='EMA8')
+        ax_main.plot(range(n), ema21, color=BLUE,
+            linewidth=0.8, alpha=0.7, label='EMA21')
+        ax_main.plot(range(n), ema50, color=PURPLE,
+            linewidth=0.8, alpha=0.7, label='EMA50')
 
         for i in range(n):
             o = float(display_df['Open'].iloc[i])
@@ -877,10 +1272,12 @@ def generate_professional_chart(df, signal, fvg_zones,
             ax_main.fill_between(range(n), entry, sl,
                 alpha=0.08, color=RED, zorder=0)
 
+        sl_pips = signal.get('sl_pips','?')
+        tp_pips = signal.get('tp_pips','?')
         for level, color, label, pos in [
             (entry, WHITE, f'ENTRY  {entry}', 'bottom'),
-            (sl, RED, f'SL  {sl}', 'top'),
-            (tp, GREEN, f'TP  {tp}', 'bottom')
+            (sl, RED, f'SL  {sl}  ({sl_pips}p)', 'top'),
+            (tp, GREEN, f'TP  {tp}  ({tp_pips}p)', 'bottom')
         ]:
             ax_main.axhline(y=level, color=color,
                 linewidth=1.5,
@@ -960,8 +1357,9 @@ def generate_professional_chart(df, signal, fvg_zones,
             f"Score: {signal['score']}%  |  Grade: {grade}  |  "
             f"HTF: {signal['htf_bias']}  |  "
             f"ADX: {signal.get('adx','N/A')}  |  "
-            f"Session: {signal['session']} {sq_s}",
-            color=WHITE, fontsize=11,
+            f"Session: {signal['session']} {sq_s}  |  "
+            f"Lot: {signal.get('lot_guidance','?')}",
+            color=WHITE, fontsize=10,
             fontweight='bold', pad=12,
             fontfamily='monospace', loc='left')
 
@@ -1070,19 +1468,19 @@ def generate_professional_chart(df, signal, fvg_zones,
         plt.setp(ax_macd.get_xticklabels(), visible=False)
 
         ax_info.axis('off')
-        reasons_str = "   ✅  ".join(signal['reasons'][:5])
-        neg_str = ("   ⚠️  ".join(signal['negative'][:2])
-            if signal.get('negative') else "")
+        sl_pips = signal.get('sl_pips','?')
+        tp_pips = signal.get('tp_pips','?')
+        lot_guide = signal.get('lot_guidance','?')
         info1 = (
             f"  ENTRY: {signal['entry']}    "
-            f"SL: {signal['sl']}    "
-            f"TP: {signal['tp']}    "
+            f"SL: {signal['sl']} ({sl_pips}p)    "
+            f"TP: {signal['tp']} ({tp_pips}p)    "
             f"RR: 1:{signal['rr']}    "
             f"RSI: {signal['rsi']}    "
-            f"ADX: {signal.get('adx','N/A')}    "
+            f"ADX: {signal.get('adx','?')}    "
             f"Pattern: {candle_pattern}    "
-            f"Market: {signal['regime']}  ")
-        info2 = "  ✅  " + reasons_str + "  "
+            f"Lot Guide: {lot_guide}  ")
+        info2 = "  ✅  " + "   ✅  ".join(signal['reasons'][:5]) + "  "
         ax_info.text(0, 0.75, info1,
             color=GRAY, fontsize=8, ha='left', va='center',
             fontfamily='monospace',
@@ -1097,6 +1495,8 @@ def generate_professional_chart(df, signal, fvg_zones,
             bbox=dict(boxstyle='round,pad=0.4',
                 facecolor='#0D2818',
                 edgecolor=GREEN, alpha=0.9))
+        neg_str = ("   ⚠️  ".join(signal['negative'][:2])
+            if signal.get('negative') else "")
         if neg_str:
             ax_info.text(0.65, 0.2,
                 "  ⚠️  "+neg_str+"  ",
@@ -1129,325 +1529,6 @@ def generate_professional_chart(df, signal, fvg_zones,
     except Exception:
         return None
 
-def analyze_pair_advanced(symbol):
-    try:
-        if not is_good_session():
-            return None
-
-        df_5m = get_data(symbol, interval="5m")
-        if df_5m is None or len(df_5m) < 60:
-            return None
-
-        score = 0
-        reasons = []
-        neg = []
-        confluences = 0
-
-        session_quality, session_name = get_session_quality()
-        htf_bias = get_htf_bias_advanced(symbol)
-        regime, adx_val = detect_market_regime_advanced(df_5m)
-        rsi = calculate_rsi(df_5m)
-        atr = calculate_atr(df_5m)
-        adx, plus_di, minus_di = calculate_adx(df_5m)
-        candle_pattern, candle_dir = detect_candle_pattern(df_5m)
-
-        bull_bos, bear_bos, sh_level, sl_level = detect_bos_advanced(df_5m)
-        bull_fvg, bear_fvg, fvg_zones = detect_fvg_advanced(df_5m)
-        bull_sweep, bear_sweep = detect_liquidity_sweep_advanced(df_5m)
-        bull_choch, bear_choch = detect_choch_advanced(df_5m)
-        swing_highs, swing_lows = detect_swing_highs_lows(df_5m)
-
-        close = float(df_5m['Close'].iloc[-1])
-        ema8 = float(calculate_ema(df_5m,8).iloc[-1])
-        ema21 = float(calculate_ema(df_5m,21).iloc[-1])
-        ema50 = float(calculate_ema(df_5m,50).iloc[-1])
-
-        is_bull = bull_bos or bull_fvg or bull_sweep or bull_choch or candle_dir=="BULLISH"
-        is_bear = bear_bos or bear_fvg or bear_sweep or bear_choch or candle_dir=="BEARISH"
-
-        if is_bull and not is_bear:
-            direction = "BUY"
-        elif is_bear and not is_bull:
-            direction = "SELL"
-        elif is_bull and is_bear:
-            if htf_bias == "BULLISH":
-                direction = "BUY"
-            elif htf_bias == "BEARISH":
-                direction = "SELL"
-            else:
-                return None
-        else:
-            return None
-
-        ob_found, ob_top, ob_bottom, ob_index = detect_order_block_advanced(df_5m, direction)
-        in_pd = is_price_in_pd_zone(df_5m, direction)
-
-        if htf_bias == "BULLISH" and direction == "BUY":
-            score += 20; reasons.append("HTF Bullish"); confluences += 1
-        elif htf_bias == "BEARISH" and direction == "SELL":
-            score += 20; reasons.append("HTF Bearish"); confluences += 1
-        elif htf_bias == "NEUTRAL":
-            score += 3; neg.append("HTF Neutral")
-        else:
-            score -= 15; neg.append("HTF Conflict")
-
-        if adx > 25:
-            if direction=="BUY" and plus_di>minus_di:
-                score += 15
-                reasons.append("Strong Uptrend ADX:"+str(round(adx,1)))
-                confluences += 1
-            elif direction=="SELL" and minus_di>plus_di:
-                score += 15
-                reasons.append("Strong Downtrend ADX:"+str(round(adx,1)))
-                confluences += 1
-        elif adx < 15:
-            score -= 10; neg.append("Weak Trend")
-
-        if regime == "VOLATILE":
-            score -= 20; neg.append("High Volatility")
-        elif regime == "RANGING" and adx < 20:
-            score -= 10; neg.append("Ranging Market")
-        elif (regime=="TRENDING UP" and direction=="BUY") or \
-             (regime=="TRENDING DOWN" and direction=="SELL"):
-            score += 10; reasons.append("Trend Alignment"); confluences += 1
-
-        if bull_bos and direction=="BUY":
-            score += 18; reasons.append("Bullish BOS"); confluences += 1
-        if bear_bos and direction=="SELL":
-            score += 18; reasons.append("Bearish BOS"); confluences += 1
-        if bull_fvg and direction=="BUY":
-            score += 15; reasons.append("Bullish FVG"); confluences += 1
-        if bear_fvg and direction=="SELL":
-            score += 15; reasons.append("Bearish FVG"); confluences += 1
-        if bull_sweep and direction=="BUY":
-            score += 18; reasons.append("Bullish Liq Sweep"); confluences += 1
-        if bear_sweep and direction=="SELL":
-            score += 18; reasons.append("Bearish Liq Sweep"); confluences += 1
-        if bull_choch and direction=="BUY":
-            score += 12; reasons.append("Bullish CHOCH"); confluences += 1
-        if bear_choch and direction=="SELL":
-            score += 12; reasons.append("Bearish CHOCH"); confluences += 1
-        if ob_found:
-            score += 12; reasons.append("Order Block"); confluences += 1
-        if in_pd:
-            score += 10; reasons.append("P/D Zone"); confluences += 1
-
-        if direction=="BUY":
-            if ema8 > ema21 > ema50:
-                score += 8; reasons.append("EMA Stack Bull"); confluences += 1
-            elif ema8 < ema21:
-                score -= 5; neg.append("EMA Conflict")
-        else:
-            if ema8 < ema21 < ema50:
-                score += 8; reasons.append("EMA Stack Bear"); confluences += 1
-            elif ema8 > ema21:
-                score -= 5; neg.append("EMA Conflict")
-
-        if direction=="BUY":
-            if 20 < rsi < 55:
-                score += 8; reasons.append("RSI Bullish Zone")
-            elif rsi >= 70:
-                score -= 15; neg.append("RSI Overbought")
-        else:
-            if 45 < rsi < 80:
-                score += 8; reasons.append("RSI Bearish Zone")
-            elif rsi <= 30:
-                score -= 15; neg.append("RSI Oversold")
-
-        if (candle_dir=="BULLISH" and direction=="BUY") or \
-           (candle_dir=="BEARISH" and direction=="SELL"):
-            score += 8; reasons.append(candle_pattern)
-        elif candle_dir != "NEUTRAL":
-            if (candle_dir=="BEARISH" and direction=="BUY") or \
-               (candle_dir=="BULLISH" and direction=="SELL"):
-                score -= 10; neg.append("Opposing Pattern")
-
-        if session_quality == "BEST":
-            score += 10; reasons.append("Best Session ⭐⭐⭐")
-        elif session_quality == "GOOD":
-            score += 5; reasons.append(session_name+" Session")
-        elif session_quality == "MODERATE":
-            score += 0; reasons.append("Asia Session")
-
-        news = st.session_state.get('cached_news', [])
-        if [n for n in news if n['impact']==3]:
-            score -= 20; neg.append("High Impact News!")
-
-        if confluences < 4:
-            return None
-
-        score = min(max(score,0), 95)
-
-        sl = calculate_structure_sl_advanced(
-            df_5m, direction, atr, swing_highs, swing_lows)
-        sl_dist = abs(close-sl)
-        if sl_dist < atr*0.5:
-            sl = close-atr*1.5 if direction=="BUY" else close+atr*1.5
-            sl_dist = abs(close-sl)
-        if sl_dist > atr*4:
-            sl = close-atr*2 if direction=="BUY" else close+atr*2
-            sl_dist = abs(close-sl)
-
-        entry = close
-        tp_mult = 2.5 if adx > 30 else 2.0
-        tp = round(entry+sl_dist*tp_mult if direction=="BUY"
-            else entry-sl_dist*tp_mult, 5)
-
-        return {
-            "pair": symbol,
-            "direction": direction,
-            "score": score,
-            "entry": round(entry,5),
-            "sl": round(sl,5),
-            "tp": round(tp,5),
-            "rr": round(tp_mult,1),
-            "rsi": round(rsi,1),
-            "adx": round(adx,1),
-            "htf_bias": htf_bias,
-            "regime": regime,
-            "session": session_name,
-            "session_quality": session_quality,
-            "confluences": confluences,
-            "reasons": reasons,
-            "negative": neg,
-            "candle_pattern": candle_pattern,
-            "time": get_ist_time().strftime('%d %b %Y %H:%M IST'),
-            "current_price": round(close,5),
-            "atr": round(atr,5),
-            "result": "Pending",
-            "df": df_5m,
-            "fvg_zones": fvg_zones,
-            "ob_found": ob_found,
-            "ob_top": ob_top,
-            "ob_bottom": ob_bottom,
-            "ob_index": ob_index,
-            "bull_bos": bull_bos,
-            "bear_bos": bear_bos,
-            "bull_sweep": bull_sweep,
-            "bear_sweep": bear_sweep,
-            "swing_highs": swing_highs,
-            "swing_lows": swing_lows,
-            "swing_high_level": sh_level,
-            "swing_low_level": sl_level
-        }
-    except Exception:
-        return None
-
-def check_signal_outcomes():
-    try:
-        journal = st.session_state.trade_journal
-        pending = [j for j in journal if j['result']=="Pending"]
-        if not pending:
-            return
-        for trade in pending:
-            try:
-                age = get_signal_age(trade['time'])
-                if age > 120:
-                    for j in st.session_state.trade_journal:
-                        if j['id'] == trade['id']:
-                            j['result'] = "Expired"
-                            j['pnl'] = 0
-                    continue
-                df = get_data(trade['pair'], interval="5m")
-                if df is None:
-                    continue
-                ch = float(df['High'].iloc[-1])
-                cl = float(df['Low'].iloc[-1])
-                entry = trade['entry']
-                sl = trade['sl']
-                tp = trade['tp']
-                direction = trade['direction']
-                if direction == "BUY":
-                    if ch >= tp:
-                        for j in st.session_state.trade_journal:
-                            if j['id'] == trade['id']:
-                                j['result'] = "TP Hit"
-                                j['pnl'] = trade['rr']
-                        send_discord_alert(
-                            "✅ **TP HIT! TRADE WON!** 🎯\n\n"
-                            "**"+trade['pair']+" BUY**\n"
-                            "Entry: "+str(entry)+"\n"
-                            "TP: "+str(tp)+"\n"
-                            "RR: 1:"+str(trade['rr'])+"\n"
-                            "Time: "+get_ist_time().strftime('%H:%M IST'))
-                    elif cl <= sl:
-                        for j in st.session_state.trade_journal:
-                            if j['id'] == trade['id']:
-                                j['result'] = "SL Hit"
-                                j['pnl'] = -1
-                        send_discord_alert(
-                            "❌ **SL HIT! TRADE LOST!**\n\n"
-                            "**"+trade['pair']+" BUY**\n"
-                            "Entry: "+str(entry)+"\n"
-                            "SL: "+str(sl)+"\n"
-                            "Time: "+get_ist_time().strftime('%H:%M IST'))
-                else:
-                    if cl <= tp:
-                        for j in st.session_state.trade_journal:
-                            if j['id'] == trade['id']:
-                                j['result'] = "TP Hit"
-                                j['pnl'] = trade['rr']
-                        send_discord_alert(
-                            "✅ **TP HIT! TRADE WON!** 🎯\n\n"
-                            "**"+trade['pair']+" SELL**\n"
-                            "Entry: "+str(entry)+"\n"
-                            "TP: "+str(tp)+"\n"
-                            "RR: 1:"+str(trade['rr'])+"\n"
-                            "Time: "+get_ist_time().strftime('%H:%M IST'))
-                    elif ch >= sl:
-                        for j in st.session_state.trade_journal:
-                            if j['id'] == trade['id']:
-                                j['result'] = "SL Hit"
-                                j['pnl'] = -1
-                        send_discord_alert(
-                            "❌ **SL HIT! TRADE LOST!**\n\n"
-                            "**"+trade['pair']+" SELL**\n"
-                            "Entry: "+str(entry)+"\n"
-                            "SL: "+str(sl)+"\n"
-                            "Time: "+get_ist_time().strftime('%H:%M IST'))
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-def format_discord_message(signal):
-    grade = ("A+" if signal['score']>=90 else
-             "A" if signal['score']>=80 else
-             "B" if signal['score']>=70 else "C")
-    emoji = "🟢 BUY" if signal['direction']=="BUY" else "🔴 SELL"
-    reasons_text = "\n".join(["✅ "+r for r in signal['reasons']])
-    neg_text = "\n".join(["⚠️ "+n for n in signal['negative']])
-    instr = ("📍 **Enter BUY at or below: "+str(signal['entry'])+"**"
-        if signal['direction']=="BUY"
-        else "📍 **Enter SELL at or above: "+str(signal['entry'])+"**")
-    sq = signal.get('session_quality','GOOD')
-    sq_s = "⭐⭐⭐" if sq=="BEST" else "⭐⭐" if sq=="GOOD" else "⭐"
-    msg = (
-        "🚨 **HIGH CONFIDENCE SIGNAL** 🚨\n\n"
-        "**"+emoji+" "+signal['pair']+"**\n\n"
-        "📊 Score: "+str(signal['score'])+"%\n"
-        "🏆 Grade: "+grade+"\n"
-        "🔗 Confluences: "+str(signal['confluences'])+"\n"
-        "📐 Pattern: "+signal.get('candle_pattern','N/A')+"\n"
-        "📉 ADX: "+str(signal.get('adx','N/A'))+"\n"
-        "🕐 Session: "+signal['session']+" "+sq_s+"\n\n"
-        +instr+"\n"
-        "💰 Entry: "+str(signal['entry'])+"\n"
-        "🛑 SL: "+str(signal['sl'])+"\n"
-        "🎯 TP: "+str(signal['tp'])+"\n"
-        "⚖️ RR: 1:"+str(signal['rr'])+"\n\n"
-        "📈 HTF: "+signal['htf_bias']+"\n"
-        "🌍 Market: "+signal['regime']+"\n"
-        "📉 RSI: "+str(signal['rsi'])+"\n\n"
-        "⏰ Time: "+signal['time']+"\n"
-        "🤖 Auto TP/SL tracking active!\n\n"
-        "⚠️ Skip if price moved >"+str(signal['atr'])+" away!\n\n"
-        "✅ **Reasons:**\n"+reasons_text+"\n")
-    if signal['negative']:
-        msg += "\n⚠️ **Caution:**\n"+neg_text+"\n"
-    msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
-    return msg
-
 def add_to_journal(signal):
     entry = {
         "id": get_signal_id(signal),
@@ -1458,6 +1539,8 @@ def add_to_journal(signal):
         "sl": signal['sl'],
         "tp": signal['tp'],
         "rr": signal['rr'],
+        "sl_pips": signal.get('sl_pips',0),
+        "tp_pips": signal.get('tp_pips',0),
         "rsi": signal['rsi'],
         "htf_bias": signal['htf_bias'],
         "regime": signal['regime'],
@@ -1465,6 +1548,7 @@ def add_to_journal(signal):
         "confluences": signal['confluences'],
         "reasons": signal['reasons'],
         "candle_pattern": signal.get('candle_pattern',''),
+        "lot_guidance": signal.get('lot_guidance',''),
         "time": signal['time'],
         "result": "Pending",
         "pnl": 0
@@ -1506,11 +1590,6 @@ def get_active_pairs():
     active = [p for p in ALL_PAIRS if enabled.get(p,True)]
     return active if active else ALL_PAIRS
 
-def keep_alive():
-    if 'last_keepalive' not in st.session_state:
-        st.session_state.last_keepalive = get_ist_time()
-    st.session_state.last_keepalive = get_ist_time()
-
 for key, val in [
     ('scanner_running',False),
     ('logged_in',False),
@@ -1529,7 +1608,7 @@ for key, val in [
     ('last_outcome_check',None),
     ('enabled_pairs',{p:True for p in ALL_PAIRS}),
     ('scan_interval_minutes',5),
-    ('last_keepalive',None)
+    ('keepalive_count',0)
 ]:
     if key not in st.session_state:
         st.session_state[key] = val
@@ -1593,7 +1672,8 @@ def run_scan():
 
 def auto_scan():
     try:
-        keep_alive()
+        st.session_state.keepalive_count = (
+            st.session_state.keepalive_count + 1)
         now = get_ist_time()
         scan_secs = st.session_state.get(
             'scan_interval_minutes', 5) * 60
@@ -1614,7 +1694,7 @@ def auto_scan():
 
 def main():
     st.markdown(CYBER_CSS, unsafe_allow_html=True)
-    keep_alive()
+    st.markdown(KEEP_ALIVE_JS, unsafe_allow_html=True)
     if not st.session_state.logged_in:
         show_login_page()
     else:
@@ -1635,7 +1715,7 @@ def show_login_page():
         <div style='font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.95em;
             letter-spacing:4px; margin-bottom:8px'>
-        PROFESSIONAL FOREX & INDICES INTELLIGENCE</div>
+        PROFESSIONAL SCALPING INTELLIGENCE</div>
         <div style='font-family:Exo 2,sans-serif;
             color:rgba(0,255,136,0.4); font-size:0.8em;
             letter-spacing:2px'>
@@ -1736,25 +1816,25 @@ def show_login_page():
             border-radius:10px; padding:10px 15px;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.82em'>
-            🧠 Advanced SMC + ICT</div>
+            🎯 Scalping Optimized SL/TP</div>
         <div style='background:rgba(0,255,136,0.05);
             border:1px solid rgba(0,255,136,0.2);
             border-radius:10px; padding:10px 15px;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.82em'>
-            📊 Professional Charts</div>
+            💼 Lot Size Guidance</div>
         <div style='background:rgba(0,255,136,0.05);
             border:1px solid rgba(0,255,136,0.2);
             border-radius:10px; padding:10px 15px;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.82em'>
-            🎯 Custom Pair Selection</div>
+            🌐 Keep-Alive System</div>
         <div style='background:rgba(0,255,136,0.05);
             border:1px solid rgba(0,255,136,0.2);
             border-radius:10px; padding:10px 15px;
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.82em'>
-            🔔 Auto TP/SL Tracking</div>
+            📊 5-Panel Charts</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1817,6 +1897,18 @@ def show_dashboard():
 
         if high_impact:
             st.error("🚨 HIGH IMPACT NEWS!")
+
+        ka_count = st.session_state.get('keepalive_count', 0)
+        st.markdown(f"""
+        <div style='background:rgba(0,150,255,0.05);
+            border:1px solid rgba(0,150,255,0.1);
+            border-radius:8px; padding:5px;
+            text-align:center; margin:4px 0;
+            font-family:Exo 2,sans-serif;
+            color:#0096FF; font-size:0.75em'>
+            🌐 Keep-Alive: Active #{ka_count}
+        </div>
+        """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div style='background:rgba(0,255,136,0.03);
@@ -1882,7 +1974,7 @@ def show_main_dashboard():
     stats = calculate_stats()
 
     if high_impact:
-        st.error("🚨 HIGH IMPACT NEWS — Signals paused!")
+        st.error("🚨 HIGH IMPACT NEWS — DO NOT TRADE!")
     if session_quality == "POOR":
         st.warning("⚠️ Off Session — No active sessions right now")
 
@@ -1913,11 +2005,11 @@ def show_main_dashboard():
                 active = get_active_pairs()
                 send_discord_alert(
                     "🟢 **AI Trading Scanner ACTIVATED!**\n"
+                    "Scalping optimized SL/TP active!\n"
                     "Session: "+session_name+" ["+session_quality+"]\n"
-                    "Scanning "+str(len(active))+" pairs: "+
-                    ", ".join(active)+"\n"
+                    "Scanning: "+", ".join(active)+"\n"
                     "Interval: "+str(st.session_state.get('scan_interval_minutes',5))+" min\n"
-                    "Auto TP/SL tracking: Active!\n"
+                    "Keep-alive: Active!\n"
                     "User: "+str(st.session_state.user_email)+
                     "\nTime: "+get_ist_time().strftime('%d %b %Y %H:%M IST'))
                 st.rerun()
@@ -1994,6 +2086,27 @@ def show_main_dashboard():
                 st.rerun()
 
     st.divider()
+
+    st.markdown("""
+    <div style='background:rgba(255,170,0,0.05);
+        border:1px solid rgba(255,170,0,0.2);
+        border-radius:10px; padding:12px;
+        margin-bottom:15px;
+        font-family:Exo 2,sans-serif'>
+        <div style='color:#FFAA00; font-weight:bold;
+            margin-bottom:8px'>
+        ⚠️ SCALPING RISK RULES</div>
+        <div style='color:#8899AA; font-size:0.85em'>
+        • Max lot size: 0.01-0.05 lots per trade<br>
+        • XAUUSD max: 0.01-0.02 lots only!<br>
+        • Max risk per trade: 1-2% of balance<br>
+        • Never average down on losing trades<br>
+        • Close trade if signal expires (30 min)<br>
+        • Check news before every trade!
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("""
     <div style='font-family:Orbitron,monospace;
         color:#00FF88; font-size:0.85em;
@@ -2007,6 +2120,8 @@ def show_main_dashboard():
     for i, pair in enumerate(ALL_PAIRS):
         with cols[i % 3]:
             is_on = enabled.get(pair, True)
+            settings = PAIR_SETTINGS.get(pair, {})
+            sl_p = settings.get('sl_pips','?')
             color = "#00FF88" if is_on else "#445566"
             bg = "rgba(0,255,136,0.08)" if is_on else "rgba(255,255,255,0.02)"
             border = "rgba(0,255,136,0.4)" if is_on else "rgba(255,255,255,0.08)"
@@ -2017,11 +2132,11 @@ def show_main_dashboard():
                 border-radius:10px; padding:8px;
                 text-align:center; margin-bottom:6px;
                 font-family:Orbitron,monospace;
-                color:{color}; font-size:0.8em;
+                color:{color}; font-size:0.78em;
                 letter-spacing:1px'>
                 {pair}<br>
-                <span style='font-size:0.75em;
-                    opacity:0.8'>{status}</span>
+                <span style='font-size:0.7em;
+                    opacity:0.7'>SL:{sl_p}p | {status}</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -2102,7 +2217,7 @@ def show_signals_page():
 
     news = st.session_state.get('cached_news',[])
     if [n for n in news if n['impact']==3]:
-        st.error("🚨 HIGH IMPACT NEWS — Extra caution!")
+        st.error("🚨 HIGH IMPACT NEWS — DO NOT TRADE!")
 
     if not st.session_state.signals:
         st.markdown("""
@@ -2133,28 +2248,48 @@ def show_signals_page():
             status = get_signal_status(age)
             sq = signal.get('session_quality','GOOD')
             sq_s = "⭐⭐⭐" if sq=="BEST" else "⭐⭐" if sq=="GOOD" else "⭐"
+            sl_pips = signal.get('sl_pips','?')
+            tp_pips = signal.get('tp_pips','?')
             with st.expander(
                 "🟢 "+signal['pair']+" "+
                 signal['direction']+"  |  "+
                 str(signal['score'])+"%  |  "+
-                str(signal['confluences'])+" conf  |  "+
+                "SL:"+str(sl_pips)+"p TP:"+str(tp_pips)+"p  |  "+
                 sq_s+"  |  "+status):
                 col1,col2,col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
                 with col2:
-                    st.metric("Stop Loss", signal['sl'])
+                    st.metric("SL ("+str(sl_pips)+"p)", signal['sl'])
                 with col3:
-                    st.metric("Take Profit", signal['tp'])
+                    st.metric("TP ("+str(tp_pips)+"p)", signal['tp'])
+
                 if age >= 30:
-                    st.error("⛔ EXPIRED!")
+                    st.error("⛔ EXPIRED — DO NOT TRADE!")
                 elif age >= 15:
-                    st.warning("⚠️ Aging — verify price!")
+                    st.warning("⚠️ Aging — verify price first!")
                 else:
+                    lot_guide = signal.get('lot_guidance','0.01-0.05')
                     if signal['direction'] == "BUY":
-                        st.success("✅ Enter BUY at or below: "+str(signal['entry']))
+                        st.success(
+                            "✅ BUY at or below: "+str(signal['entry'])+
+                            " | Lot: "+lot_guide)
                     else:
-                        st.success("✅ Enter SELL at or above: "+str(signal['entry']))
+                        st.success(
+                            "✅ SELL at or above: "+str(signal['entry'])+
+                            " | Lot: "+lot_guide)
+
+                st.markdown(f"""
+                <div style='background:rgba(255,170,0,0.05);
+                    border:1px solid rgba(255,170,0,0.2);
+                    border-radius:8px; padding:8px;
+                    font-family:Exo 2,sans-serif;
+                    color:#FFAA00; font-size:0.82em;
+                    margin:5px 0'>
+                    ⚠️ Skip if price moved {signal.get('atr',0):.5f} away from entry
+                </div>
+                """, unsafe_allow_html=True)
+
                 col1,col2 = st.columns(2)
                 with col1:
                     st.write("⚖️ RR: 1:"+str(signal['rr']))
@@ -2177,10 +2312,13 @@ def show_signals_page():
         🟡 MEDIUM — 60-80%</div>
         """, unsafe_allow_html=True)
         for signal in medium:
+            sl_pips = signal.get('sl_pips','?')
+            tp_pips = signal.get('tp_pips','?')
             with st.expander(
                 "🟡 "+signal['pair']+" "+
                 signal['direction']+"  |  "+
-                str(signal['score'])+"%"):
+                str(signal['score'])+"% | "+
+                "SL:"+str(sl_pips)+"p TP:"+str(tp_pips)+"p"):
                 col1,col2,col3 = st.columns(3)
                 with col1:
                     st.metric("Entry", signal['entry'])
@@ -2230,10 +2368,10 @@ def show_journal_page():
                 with col1:
                     st.metric("Entry", trade['entry'])
                 with col2:
-                    st.metric("SL", trade['sl'])
+                    st.metric("SL ("+str(trade.get('sl_pips','?'))+"p)", trade['sl'])
                 with col3:
-                    st.metric("TP", trade['tp'])
-                st.info("🤖 Auto tracking every 60s!")
+                    st.metric("TP ("+str(trade.get('tp_pips','?'))+"p)", trade['tp'])
+                st.info("🤖 Auto tracking every 60 seconds!")
                 result = st.selectbox(
                     "Manual Override",
                     ["Pending","TP Hit","SL Hit",
@@ -2264,6 +2402,8 @@ def show_journal_page():
         rc = ("color:#00FF88" if trade['result']=="TP Hit" else
               "color:#FF4444" if trade['result']=="SL Hit" else
               "color:#8899AA")
+        sl_p = trade.get('sl_pips','?')
+        tp_p = trade.get('tp_pips','?')
         st.markdown(f"""
         <div style='background:rgba(255,255,255,0.02);
             border:1px solid rgba(255,255,255,0.06);
@@ -2272,6 +2412,7 @@ def show_journal_page():
             font-family:Exo 2,sans-serif'>
             {emoji} <b>{trade['pair']} {trade['direction']}</b>
             | {trade['score']}%
+            | SL:{sl_p}p TP:{tp_p}p
             | <span style='{rc}'><b>{trade['result']}</b></span>
             | {trade['time']}
         </div>
@@ -2325,6 +2466,8 @@ def show_performance_page():
             bar = "█"*int(wr/5)+"░"*(20-int(wr/5))
             color = ("#00FF88" if wr>=60 else
                      "#FFAA00" if wr>=40 else "#FF4444")
+            settings = PAIR_SETTINGS.get(pair,{})
+            sl_p = settings.get('sl_pips','?')
             st.markdown(f"""
             <div style='font-family:Exo 2,sans-serif;
                 margin-bottom:6px; padding:8px 12px;
@@ -2332,6 +2475,9 @@ def show_performance_page():
                 border-radius:8px'>
                 <span style='color:#FFFFFF;
                     font-weight:600'>{pair}</span>
+                <span style='color:#8899AA;
+                    font-size:0.8em;
+                    margin-left:8px'>SL:{sl_p}p</span>
                 <span style='color:{color};
                     font-family:monospace;
                     margin-left:10px'>{bar}</span>
@@ -2410,7 +2556,7 @@ def show_settings_page():
     st.divider()
 
     st.subheader("📡 Pair Selection")
-    st.write("Toggle ON/OFF which pairs to scan:")
+    st.write("Toggle ON/OFF pairs to scan:")
 
     enabled = st.session_state.get(
         'enabled_pairs', {p:True for p in ALL_PAIRS})
@@ -2448,9 +2594,11 @@ def show_settings_page():
     cols = st.columns(3)
     for i, pair in enumerate(ALL_PAIRS):
         with cols[i % 3]:
+            settings = PAIR_SETTINGS.get(pair,{})
+            sl_p = settings.get('sl_pips','?')
             is_enabled = enabled.get(pair, True)
             new_val = st.toggle(
-                pair,
+                pair+" (SL:"+str(sl_p)+"p)",
                 value=is_enabled,
                 key="toggle_"+pair)
             if new_val != is_enabled:
@@ -2461,7 +2609,7 @@ def show_settings_page():
         st.session_state.enabled_pairs = enabled
         active = [p for p in ALL_PAIRS
             if enabled.get(p, True)]
-        st.success("✅ Now scanning: " +
+        st.success("✅ Scanning: " +
             (", ".join(active) if active else "None"))
         st.rerun()
 
@@ -2474,33 +2622,46 @@ def show_settings_page():
             font-family:Exo 2,sans-serif;
             color:#8899AA; font-size:0.85em;
             margin-top:5px'>
-            📡 Active pairs: <span style='color:#00FF88'>
+            📡 Active: <span style='color:#00FF88'>
             {" · ".join(active_pairs)}</span>
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.error("⚠️ No pairs selected! Please enable at least one pair.")
+        st.error("⚠️ No pairs selected!")
+
+    st.divider()
+
+    st.subheader("📊 Scalping SL/TP Settings")
+    st.markdown("""
+    <div style='font-family:Exo 2,sans-serif;
+        font-size:0.85em'>
+    """, unsafe_allow_html=True)
+    for pair, settings in PAIR_SETTINGS.items():
+        enabled_status = "✅" if enabled.get(pair,True) else "❌"
+        st.write(f"{enabled_status} **{pair}**: "
+            f"SL={settings['sl_pips']}p | "
+            f"TP={settings['sl_pips']*settings['tp_mult']:.0f}p | "
+            f"RR=1:{settings['tp_mult']}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.divider()
 
     st.subheader("⏱️ Scan Interval")
     current_interval = st.session_state.get(
         'scan_interval_minutes', 5)
-    st.write("Current interval: **" +
-        str(current_interval) + " minutes**")
+    st.write("Current: **"+str(current_interval)+" minutes**")
     scan_interval = st.selectbox(
-        "Choose scan interval:",
+        "Choose interval:",
         [1, 2, 3, 5, 10, 15, 30],
         index=[1,2,3,5,10,15,30].index(current_interval)
         if current_interval in [1,2,3,5,10,15,30] else 3,
         key="scan_interval_select")
-    if st.button("💾 Save Scan Interval",
+    if st.button("💾 Save Interval",
         use_container_width=True,
         type="primary"):
         st.session_state.scan_interval_minutes = scan_interval
         st.session_state.next_scan_seconds = scan_interval * 60
-        st.success("✅ Scan interval set to " +
-            str(scan_interval) + " minutes!")
+        st.success("✅ Set to "+str(scan_interval)+" minutes!")
 
     st.divider()
 
@@ -2510,9 +2671,10 @@ def show_settings_page():
         active = get_active_pairs()
         success = send_discord_alert(
             "✅ **System Test — AI Trading Scanner**\n"
-            "All systems operational!\n"
+            "Scalping SL/TP mode: Active!\n"
+            "Keep-alive JS: Active!\n"
             "Active pairs: "+", ".join(active)+"\n"
-            "Scan interval: "+str(st.session_state.get('scan_interval_minutes',5))+" min\n"
+            "Interval: "+str(st.session_state.get('scan_interval_minutes',5))+" min\n"
             "Session: "+get_current_session()+"\n"
             "User: "+str(st.session_state.user_email)+
             "\nTime: "+get_ist_time().strftime('%d %b %Y %H:%M IST'))
@@ -2538,72 +2700,56 @@ def show_settings_page():
 
     st.divider()
 
-    st.subheader("🌐 About Session Auto-Logout")
-    st.markdown("""
-    <div style='background:rgba(255,170,0,0.05);
-        border:1px solid rgba(255,170,0,0.2);
+    st.subheader("🌐 Keep-Alive System")
+    ka_count = st.session_state.get('keepalive_count',0)
+    st.markdown(f"""
+    <div style='background:rgba(0,150,255,0.05);
+        border:1px solid rgba(0,150,255,0.2);
         border-radius:10px; padding:15px;
         font-family:Exo 2,sans-serif;
         color:#8899AA; font-size:0.9em'>
-        <div style='color:#FFAA00; font-weight:bold;
-            margin-bottom:8px'>
-        ⚠️ Why Does App Log Out?</div>
-        Streamlit Cloud has a session timeout.
-        If the browser tab is inactive for too long,
-        the session resets.<br><br>
-        <b style='color:#00FF88'>✅ Solutions:</b><br>
-        1. Keep the browser tab active (don't minimize for hours)<br>
-        2. Set a shorter scan interval (1-2 min) so page stays active<br>
-        3. Use the REFRESH button regularly<br>
-        4. Add app to home screen and keep it open<br>
-        5. Consider Railway.app for 24/7 running (when budget allows)
+        <div style='color:#0096FF; margin-bottom:8px;
+            font-weight:bold'>
+        🌐 Keep-Alive Status</div>
+        <div>✅ JavaScript keep-alive: Active</div>
+        <div>✅ Pings server every 25 seconds</div>
+        <div>✅ Auto-reload on reconnect</div>
+        <div>✅ Wake lock for mobile screen</div>
+        <div style='margin-top:8px'>
+        📊 Keep-alive count: <b style='color:#0096FF'>
+        {ka_count}</b></div>
+        <div style='margin-top:8px; color:#FFAA00'>
+        ⚠️ Still set scan interval to 1-2 min
+        for best results!</div>
     </div>
     """, unsafe_allow_html=True)
 
     st.divider()
 
-    st.subheader("🌏 Session Info")
-    st.markdown("""
-    <div style='font-family:Exo 2,sans-serif;
-        font-size:0.9em'>
-        <div style='color:#FFD700; margin-bottom:8px'>
-        ⭐⭐⭐ London+NY Overlap: 5:30PM-8PM IST
-        → Best session</div>
-        <div style='color:#00FF88; margin-bottom:8px'>
-        ⭐⭐ London: 12PM-5PM IST → Good</div>
-        <div style='color:#00FF88; margin-bottom:8px'>
-        ⭐⭐ New York: 9PM-12AM IST → Good</div>
-        <div style='color:#FFAA00; margin-bottom:8px'>
-        ⭐ Asia: 4AM-11AM IST → Moderate</div>
-        <div style='color:#FF4444'>
-        ❌ Off Session → Scanner paused</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.divider()
-
-    st.subheader("✅ Active Features")
+    st.subheader("✅ All Active Features")
     features = [
-        "Advanced BOS with Swing Points",
+        "Scalping-optimized SL/TP per pair",
+        "Pip-based SL/TP calculation",
+        "Lot size guidance in signals",
+        "Keep-alive JavaScript (25s ping)",
+        "Wake lock for mobile screen",
+        "Advanced BOS + Swing Points",
         "FVG with Size Filtering",
         "Smart Order Block Detection",
         "ADX Trend Strength Filter",
         "EMA 8/21/50 Stack",
         "Candle Pattern Recognition",
         "Multi-TF HTF Bias 4H+1H",
-        "Structure Dynamic SL",
-        "Auto TP/SL Tracking",
+        "Auto TP/SL Outcome Tracking",
         "5-Panel Professional Charts",
-        "MACD + RSI + Volume",
-        "Custom Pair Toggle Selection",
+        "MACD + RSI + Volume Panels",
+        "Pip count on chart labels",
+        "Custom Pair Toggle",
         "Adjustable Scan Interval",
-        "Asia Session Support",
+        "Session Quality Scoring",
         "News Impact Filter",
-        "Min 4 confluences",
-        "Max 2 signals per scan",
         "Signal Expiry 30 mins",
-        "Trade Journal",
-        "Performance Analytics"
+        "Discord Alerts + Charts"
     ]
     cols = st.columns(2)
     for i, f in enumerate(features):
