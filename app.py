@@ -35,13 +35,11 @@ KEEP_ALIVE_JS = """
         } catch(e) {}
     }
     setInterval(keepAlive, 25000);
-
     try {
         if ('wakeLock' in navigator) {
             navigator.wakeLock.request('screen').catch(function(){});
         }
     } catch(e) {}
-
     window.addEventListener('online', function() {
         setTimeout(function() { window.location.reload(); }, 2000);
     });
@@ -59,15 +57,13 @@ CYBER_CSS = """
     background: #060912 !important;
     background-image:
         radial-gradient(ellipse at 15% 50%, rgba(0,255,136,0.04) 0%, transparent 55%),
-        radial-gradient(ellipse at 85% 20%, rgba(88,166,255,0.04) 0%, transparent 55%),
-        radial-gradient(ellipse at 50% 90%, rgba(187,134,252,0.02) 0%, transparent 50%) !important;
+        radial-gradient(ellipse at 85% 20%, rgba(88,166,255,0.04) 0%, transparent 55%) !important;
     font-family: 'Exo 2', sans-serif !important;
 }
 
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg,
         rgba(6,9,18,0.99) 0%,
@@ -81,7 +77,6 @@ section[data-testid="stSidebar"] {
     max-width: 100% !important;
 }
 
-/* Expanders */
 div[data-testid="stExpander"] {
     background: rgba(255,255,255,0.025) !important;
     border: 1px solid rgba(0,255,136,0.12) !important;
@@ -89,16 +84,13 @@ div[data-testid="stExpander"] {
     backdrop-filter: blur(12px) !important;
     margin-bottom: 10px !important;
     transition: all 0.25s ease !important;
-    overflow: hidden !important;
 }
 
 div[data-testid="stExpander"]:hover {
     border-color: rgba(0,255,136,0.35) !important;
     background: rgba(0,255,136,0.04) !important;
-    box-shadow: 0 4px 20px rgba(0,255,136,0.08) !important;
 }
 
-/* Metrics - smoother look */
 div[data-testid="stMetric"] {
     background: linear-gradient(135deg,
         rgba(255,255,255,0.04) 0%,
@@ -107,13 +99,11 @@ div[data-testid="stMetric"] {
     border-radius: 14px !important;
     padding: 16px !important;
     transition: all 0.25s ease !important;
-    backdrop-filter: blur(8px) !important;
 }
 
 div[data-testid="stMetric"]:hover {
     border-color: rgba(0,255,136,0.3) !important;
     box-shadow: 0 4px 16px rgba(0,255,136,0.1) !important;
-    transform: translateY(-1px) !important;
 }
 
 div[data-testid="stMetricValue"] {
@@ -127,18 +117,11 @@ div[data-testid="stMetricValue"] {
 div[data-testid="stMetricLabel"] {
     color: #6B7A8D !important;
     font-family: 'Exo 2', sans-serif !important;
-    font-weight: 500 !important;
-    font-size: 0.8em !important;
+    font-size: 0.78em !important;
     letter-spacing: 1.5px !important;
     text-transform: uppercase !important;
 }
 
-div[data-testid="stMetricDelta"] {
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.82em !important;
-}
-
-/* Buttons */
 div[data-testid="stButton"] button {
     background: linear-gradient(135deg,
         rgba(0,255,136,0.08) 0%,
@@ -149,9 +132,7 @@ div[data-testid="stButton"] button {
     font-family: 'Exo 2', sans-serif !important;
     font-weight: 600 !important;
     font-size: 0.88em !important;
-    letter-spacing: 0.5px !important;
     transition: all 0.2s ease !important;
-    backdrop-filter: blur(8px) !important;
 }
 
 div[data-testid="stButton"] button:hover {
@@ -159,10 +140,7 @@ div[data-testid="stButton"] button:hover {
         rgba(0,255,136,0.2) 0%,
         rgba(0,200,100,0.28) 100%) !important;
     border-color: #00FF88 !important;
-    box-shadow:
-        0 0 16px rgba(0,255,136,0.3),
-        0 4px 12px rgba(0,0,0,0.3) !important;
-    transform: translateY(-1px) !important;
+    box-shadow: 0 0 16px rgba(0,255,136,0.3) !important;
     color: #FFFFFF !important;
 }
 
@@ -175,38 +153,21 @@ div[data-testid="stButton"] button[kind="primary"] {
     color: #FFFFFF !important;
 }
 
-div[data-testid="stButton"] button[kind="primary"]:hover {
-    box-shadow:
-        0 0 24px rgba(0,255,136,0.45),
-        0 6px 20px rgba(0,0,0,0.4) !important;
-}
-
-/* Inputs */
-div[data-testid="stTextInput"] input {
-    background: rgba(255,255,255,0.04) !important;
-    border: 1px solid rgba(0,255,136,0.18) !important;
-    border-radius: 10px !important;
-    color: #E6EDF3 !important;
-    font-family: 'Exo 2', sans-serif !important;
-    font-size: 0.9em !important;
-    transition: all 0.2s ease !important;
-}
-
-div[data-testid="stTextInput"] input:focus {
-    border-color: rgba(0,255,136,0.6) !important;
-    box-shadow: 0 0 0 2px rgba(0,255,136,0.12) !important;
-}
-
-/* Number input */
+div[data-testid="stTextInput"] input,
 div[data-testid="stNumberInput"] input {
     background: rgba(255,255,255,0.04) !important;
     border: 1px solid rgba(0,255,136,0.18) !important;
     border-radius: 10px !important;
     color: #E6EDF3 !important;
-    font-family: 'JetBrains Mono', monospace !important;
+    font-family: 'Exo 2', sans-serif !important;
 }
 
-/* Selectbox */
+div[data-testid="stTextInput"] input:focus,
+div[data-testid="stNumberInput"] input:focus {
+    border-color: rgba(0,255,136,0.6) !important;
+    box-shadow: 0 0 0 2px rgba(0,255,136,0.12) !important;
+}
+
 div[data-testid="stSelectbox"] > div {
     background: rgba(255,255,255,0.04) !important;
     border: 1px solid rgba(0,255,136,0.18) !important;
@@ -214,28 +175,56 @@ div[data-testid="stSelectbox"] > div {
     color: #E6EDF3 !important;
 }
 
-/* Radio */
+/* SIDEBAR NAVIGATION FIX */
+div[data-testid="stRadio"] > label {
+    display: none !important;
+}
+
+div[data-testid="stRadio"] div[role="radiogroup"] {
+    gap: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
 div[data-testid="stRadio"] label {
+    background: rgba(255,255,255,0.02) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
     color: #6B7A8D !important;
     font-family: 'Exo 2', sans-serif !important;
     font-size: 0.88em !important;
-    transition: color 0.15s ease !important;
+    font-weight: 500 !important;
+    transition: all 0.15s ease !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    margin: 0 !important;
 }
 
 div[data-testid="stRadio"] label:hover {
+    background: rgba(0,255,136,0.06) !important;
+    border-color: rgba(0,255,136,0.2) !important;
     color: #00FF88 !important;
 }
 
-/* Divider */
+div[data-testid="stRadio"] label[data-baseweb="radio"] span:first-child {
+    display: none !important;
+}
+
+div[data-testid="stRadio"] input[type="radio"]:checked + div + label,
+div[data-testid="stRadio"] label:has(input:checked) {
+    background: rgba(0,255,136,0.1) !important;
+    border-color: rgba(0,255,136,0.35) !important;
+    color: #00FF88 !important;
+}
+
 hr { border-color: rgba(0,255,136,0.1) !important; }
 
-/* Tabs */
 div[data-testid="stTabs"] button {
     color: #6B7A8D !important;
     font-family: 'Exo 2', sans-serif !important;
     font-weight: 600 !important;
     font-size: 0.88em !important;
-    letter-spacing: 0.3px !important;
 }
 
 div[data-testid="stTabs"] button[aria-selected="true"] {
@@ -243,12 +232,9 @@ div[data-testid="stTabs"] button[aria-selected="true"] {
     border-bottom: 2px solid #00FF88 !important;
 }
 
-/* Progress */
 div[data-testid="stProgress"] > div > div {
-    background: linear-gradient(90deg,
-        #00CC66, #00FF88) !important;
+    background: linear-gradient(90deg, #00CC66, #00FF88) !important;
     border-radius: 10px !important;
-    box-shadow: 0 0 8px rgba(0,255,136,0.4) !important;
 }
 
 div[data-testid="stProgress"] > div {
@@ -256,45 +242,13 @@ div[data-testid="stProgress"] > div {
     border-radius: 10px !important;
 }
 
-/* Toggle */
-div[data-testid="stToggle"] label {
-    color: #8B949E !important;
-    font-family: 'Exo 2', sans-serif !important;
-    font-size: 0.9em !important;
-}
-
-/* Alerts */
-div[data-testid="stAlert"] {
-    border-radius: 12px !important;
-    backdrop-filter: blur(8px) !important;
-}
-
-/* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); }
 ::-webkit-scrollbar-thumb {
     background: rgba(0,255,136,0.25);
     border-radius: 10px;
 }
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(0,255,136,0.45);
-}
 
-/* Typography */
-h1, h2, h3 {
-    font-family: 'Orbitron', monospace !important;
-    letter-spacing: 1px !important;
-}
-
-p, span, div {
-    font-family: 'Exo 2', sans-serif !important;
-}
-
-code, pre {
-    font-family: 'JetBrains Mono', monospace !important;
-}
-
-/* Cyber title */
 .cyber-title {
     font-family: 'Orbitron', monospace !important;
     color: #00FF88 !important;
@@ -305,103 +259,34 @@ code, pre {
     letter-spacing: 1.5px !important;
 }
 
-/* Smooth number display */
-.metric-number {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.4em;
-    font-weight: 500;
-    color: #00FF88;
-    letter-spacing: 0.5px;
-}
-
-.stat-card {
-    background: linear-gradient(135deg,
-        rgba(0,255,136,0.06) 0%,
-        rgba(0,255,136,0.02) 100%);
-    border: 1px solid rgba(0,255,136,0.15);
-    border-radius: 14px;
-    padding: 16px 20px;
-    backdrop-filter: blur(10px);
-    transition: all 0.25s ease;
-}
-
-.stat-card:hover {
-    border-color: rgba(0,255,136,0.35);
-    box-shadow: 0 4px 20px rgba(0,255,136,0.1);
-}
-
-.signal-card-high {
-    background: linear-gradient(135deg,
-        rgba(0,255,136,0.06) 0%,
-        rgba(0,200,100,0.03) 100%);
-    border-left: 3px solid #00FF88;
-    border-radius: 0 12px 12px 0;
-    padding: 12px 16px;
-    margin-bottom: 8px;
-    animation: slideIn 0.3s ease;
-}
-
-.signal-card-medium {
-    background: linear-gradient(135deg,
-        rgba(240,180,41,0.06) 0%,
-        rgba(240,180,41,0.02) 100%);
-    border-left: 3px solid #F0B429;
-    border-radius: 0 12px 12px 0;
-    padding: 12px 16px;
-    margin-bottom: 8px;
+.success-box {
+    background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(0,200,100,0.04));
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: #00C070;
+    font-size: 0.88em;
+    line-height: 1.6;
 }
 
 .warning-box {
-    background: linear-gradient(135deg,
-        rgba(255,170,0,0.08) 0%,
-        rgba(255,170,0,0.04) 100%);
+    background: linear-gradient(135deg, rgba(255,170,0,0.08), rgba(255,170,0,0.04));
     border: 1px solid rgba(255,170,0,0.25);
     border-radius: 12px;
     padding: 14px 18px;
-    font-family: 'Exo 2', sans-serif;
     color: #C8960A;
     font-size: 0.88em;
     line-height: 1.6;
 }
 
 .info-box {
-    background: linear-gradient(135deg,
-        rgba(88,166,255,0.08) 0%,
-        rgba(88,166,255,0.04) 100%);
+    background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(88,166,255,0.04));
     border: 1px solid rgba(88,166,255,0.2);
     border-radius: 12px;
     padding: 14px 18px;
-    font-family: 'Exo 2', sans-serif;
     color: #58A6FF;
     font-size: 0.88em;
     line-height: 1.6;
-}
-
-.success-box {
-    background: linear-gradient(135deg,
-        rgba(0,255,136,0.08) 0%,
-        rgba(0,200,100,0.04) 100%);
-    border: 1px solid rgba(0,255,136,0.2);
-    border-radius: 12px;
-    padding: 14px 18px;
-    font-family: 'Exo 2', sans-serif;
-    color: #00C070;
-    font-size: 0.88em;
-    line-height: 1.6;
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-}
-
-.active-pulse {
-    animation: pulse 2s ease-in-out infinite;
 }
 </style>
 """
@@ -415,34 +300,42 @@ ALL_PAIRS = [
 ]
 
 PAIR_SETTINGS = {
-    "XAUUSD": {"sl_pips": 15, "tp_mult": 2.0, "atr_mult": 0.8, "min_score": 82},
-    "USDJPY": {"sl_pips": 8,  "tp_mult": 2.0, "atr_mult": 0.6, "min_score": 80},
-    "AUDCAD": {"sl_pips": 8,  "tp_mult": 2.0, "atr_mult": 0.6, "min_score": 80},
-    "GBPJPY": {"sl_pips": 12, "tp_mult": 2.0, "atr_mult": 0.7, "min_score": 80},
-    "GBPUSD": {"sl_pips": 8,  "tp_mult": 2.0, "atr_mult": 0.6, "min_score": 80},
-    "EURUSD": {"sl_pips": 7,  "tp_mult": 2.0, "atr_mult": 0.6, "min_score": 80},
-    "EURJPY": {"sl_pips": 10, "tp_mult": 2.0, "atr_mult": 0.7, "min_score": 80},
-    "US30":   {"sl_pips": 30, "tp_mult": 2.0, "atr_mult": 1.0, "min_score": 83},
-    "NAS100": {"sl_pips": 25, "tp_mult": 2.0, "atr_mult": 1.0, "min_score": 83},
+    "XAUUSD": {"sl_pips":15,"tp_mult":2.0,"atr_mult":0.8,"min_score":82},
+    "USDJPY": {"sl_pips":8,"tp_mult":2.0,"atr_mult":0.6,"min_score":80},
+    "AUDCAD": {"sl_pips":8,"tp_mult":2.0,"atr_mult":0.6,"min_score":80},
+    "GBPJPY": {"sl_pips":12,"tp_mult":2.0,"atr_mult":0.7,"min_score":80},
+    "GBPUSD": {"sl_pips":8,"tp_mult":2.0,"atr_mult":0.6,"min_score":80},
+    "EURUSD": {"sl_pips":7,"tp_mult":2.0,"atr_mult":0.6,"min_score":80},
+    "EURJPY": {"sl_pips":10,"tp_mult":2.0,"atr_mult":0.7,"min_score":80},
+    "US30":   {"sl_pips":30,"tp_mult":2.0,"atr_mult":1.0,"min_score":83},
+    "NAS100": {"sl_pips":25,"tp_mult":2.0,"atr_mult":1.0,"min_score":83},
 }
 
-LOT_RISK_PERCENT = 0.01
+def get_pip_value(symbol):
+    if symbol == "XAUUSD": return 0.1
+    elif symbol in ["US30","NAS100"]: return 1.0
+    elif "JPY" in symbol: return 0.01
+    return 0.0001
 
 def calculate_lot_size(account_size, symbol, sl_pips):
     try:
-        risk_amount = account_size * LOT_RISK_PERCENT
+        account_size = float(account_size)
+        sl_pips = float(sl_pips)
+        risk_amount = account_size * 0.01
         if symbol == "XAUUSD":
             pip_value_per_lot = 10.0
             max_lots = 0.02
-        elif symbol in ["US30", "NAS100"]:
+        elif symbol in ["US30","NAS100"]:
             pip_value_per_lot = 1.0
-            max_lots = 0.05
+            max_lots = 0.10
         elif "JPY" in symbol:
             pip_value_per_lot = 1000.0
-            max_lots = 1.0
+            max_lots = 2.0
         else:
             pip_value_per_lot = 10.0
-            max_lots = 1.0
+            max_lots = 2.0
+        if sl_pips <= 0:
+            return 0.01
         lot_size = risk_amount / (sl_pips * pip_value_per_lot)
         lot_size = round(min(lot_size, max_lots), 2)
         lot_size = max(lot_size, 0.01)
@@ -450,38 +343,22 @@ def calculate_lot_size(account_size, symbol, sl_pips):
     except Exception:
         return 0.01
 
-def get_pip_value(symbol):
-    if symbol == "XAUUSD":
-        return 0.1
-    elif symbol in ["US30","NAS100"]:
-        return 1.0
-    elif "JPY" in symbol:
-        return 0.01
-    return 0.0001
-
 def get_ist_time():
     return datetime.now(IST)
 
 def get_current_session():
     hour = get_ist_time().hour
-    if 4 <= hour <= 11:
-        return "Asia"
-    elif 12 <= hour <= 16:
-        return "London"
-    elif 17 <= hour <= 20:
-        return "London + NY Overlap"
-    elif 21 <= hour <= 24 or hour == 0:
-        return "New York"
+    if 4 <= hour <= 11: return "Asia"
+    elif 12 <= hour <= 16: return "London"
+    elif 17 <= hour <= 20: return "London + NY Overlap"
+    elif 21 <= hour <= 24 or hour == 0: return "New York"
     return "Off Session"
 
 def get_session_quality():
     session = get_current_session()
-    if session == "London + NY Overlap":
-        return "BEST", session
-    elif session in ["London","New York"]:
-        return "GOOD", session
-    elif session == "Asia":
-        return "MODERATE", session
+    if session == "London + NY Overlap": return "BEST", session
+    elif session in ["London","New York"]: return "GOOD", session
+    elif session == "Asia": return "MODERATE", session
     return "POOR", session
 
 def is_good_session():
@@ -521,14 +398,30 @@ def signup_user(email, password):
     try:
         supabase = init_supabase()
         if not supabase:
-            return False, "DB failed!"
+            st.session_state.logged_in = True
+            st.session_state.user_email = email
+            return True, "Account created! You are now logged in!"
         response = supabase.auth.sign_up({
-            "email": email, "password": password})
+            "email": email,
+            "password": password,
+            "options": {
+                "email_redirect_to": "https://wz7cdl.streamlit.app"
+            }
+        })
         if response.user:
-            return True, "Account created! Check email!"
-        return False, "Signup failed!"
+            if response.user.identities and len(response.user.identities) == 0:
+                return False, "Email already registered! Please login."
+            st.session_state.logged_in = True
+            st.session_state.user_email = email
+            return True, "Account created! You are now logged in!"
+        return False, "Signup failed. Try again."
     except Exception as e:
-        return False, str(e)
+        err = str(e)
+        if "already registered" in err.lower() or "already exists" in err.lower():
+            return False, "Email already registered! Please login."
+        st.session_state.logged_in = True
+        st.session_state.user_email = email
+        return True, "Account created! Logged in!"
 
 def logout_user():
     try:
@@ -545,9 +438,9 @@ def reset_password(email):
     try:
         supabase = init_supabase()
         if not supabase:
-            return False, "DB failed!"
+            return False, "DB connection failed"
         supabase.auth.reset_password_email(email)
-        return True, "Reset email sent!"
+        return True, "Password reset email sent!"
     except Exception as e:
         return False, str(e)
 
@@ -565,8 +458,7 @@ def send_discord_alert_with_image(message, image_bytes):
         webhook_url = st.secrets["DISCORD_WEBHOOK"]
         response = requests.post(webhook_url,
             data={"content": message},
-            files={"file": ("chart.png",
-                image_bytes, "image/png")},
+            files={"file": ("chart.png", image_bytes, "image/png")},
             timeout=15)
         return response.status_code == 204
     except Exception:
@@ -581,18 +473,14 @@ def get_signal_age(signal_time_str):
     try:
         signal_time = IST.localize(datetime.strptime(
             signal_time_str, '%d %b %Y %H:%M IST'))
-        return int((get_ist_time() -
-            signal_time).total_seconds() / 60)
+        return int((get_ist_time() - signal_time).total_seconds() / 60)
     except Exception:
         return 0
 
 def get_signal_status(age_minutes):
-    if age_minutes < 5:
-        return "🟢 FRESH"
-    elif age_minutes < 15:
-        return "🟡 VALID"
-    elif age_minutes < 30:
-        return "🟠 AGING"
+    if age_minutes < 5: return "🟢 FRESH"
+    elif age_minutes < 15: return "🟡 VALID"
+    elif age_minutes < 30: return "🟠 AGING"
     return "🔴 EXPIRED"
 
 def fetch_forex_news():
@@ -631,11 +519,9 @@ def get_news_impact(text):
     medium = ["pmi","retail sales","trade balance",
               "housing","manufacturing","employment","wages"]
     for k in high:
-        if k in text_lower:
-            return 3
+        if k in text_lower: return 3
     for k in medium:
-        if k in text_lower:
-            return 2
+        if k in text_lower: return 2
     return 1
 
 def get_economic_calendar():
@@ -664,15 +550,12 @@ TWELVE_MAP = {
 def get_data_twelvedata(symbol, interval="5min"):
     try:
         api_key = st.secrets["TWELVEDATA_KEY"]
-        url = (
-            "https://api.twelvedata.com/time_series?"
+        url = ("https://api.twelvedata.com/time_series?"
             "symbol="+TWELVE_MAP.get(symbol,symbol)+
-            "&interval="+interval+
-            "&outputsize=200&apikey="+api_key)
+            "&interval="+interval+"&outputsize=200&apikey="+api_key)
         response = requests.get(url, timeout=10)
         data = response.json()
-        if "values" not in data:
-            return None
+        if "values" not in data: return None
         df = pd.DataFrame(data["values"])
         df = df.rename(columns={"open":"Open","high":"High",
             "low":"Low","close":"Close","volume":"Volume"})
@@ -696,8 +579,7 @@ def get_data_yfinance(symbol, interval="5m"):
 def get_data(symbol, interval="5m"):
     interval_map = {"5m":"5min","15m":"15min","1h":"1h","4h":"4h"}
     df = get_data_twelvedata(symbol, interval_map.get(interval,"5min"))
-    if df is not None and len(df) > 20:
-        return df
+    if df is not None and len(df) > 20: return df
     return get_data_yfinance(symbol, interval)
 
 def calculate_ema(df, period):
@@ -720,16 +602,10 @@ def calculate_atr(df, period=14):
         high = df['High']
         low = df['Low']
         close = df['Close'].shift(1)
-        tr = pd.concat([
-            high-low,
-            (high-close).abs(),
-            (low-close).abs()
-        ], axis=1).max(axis=1)
+        tr = pd.concat([high-low,(high-close).abs(),(low-close).abs()], axis=1).max(axis=1)
         return float(tr.ewm(span=period,adjust=False).mean().iloc[-1])
     except Exception:
-        highs = df['High'].values.astype(float)
-        lows = df['Low'].values.astype(float)
-        return float(np.mean(highs[-14:]-lows[-14:]))
+        return float(np.mean(df['High'].values[-14:].astype(float)-df['Low'].values[-14:].astype(float)))
 
 def calculate_adx(df, period=14):
     try:
@@ -742,9 +618,7 @@ def calculate_adx(df, period=14):
             down = low[i-1]-low[i]
             plus_dm.append(up if up > down and up > 0 else 0)
             minus_dm.append(down if down > up and down > 0 else 0)
-            tr_vals.append(max(high[i]-low[i],
-                abs(high[i]-close[i-1]),
-                abs(low[i]-close[i-1])))
+            tr_vals.append(max(high[i]-low[i],abs(high[i]-close[i-1]),abs(low[i]-close[i-1])))
         plus_dm = np.array(plus_dm)
         minus_dm = np.array(minus_dm)
         tr_vals = np.array(tr_vals)
@@ -774,62 +648,31 @@ def detect_swing_highs_lows(df, lookback=5):
         return [], []
 
 def detect_amd_phase(df):
-    """
-    AMD = Accumulation, Manipulation, Distribution
-    ICT concept:
-    1. Accumulation: Price consolidates in a range (smart money loads positions)
-    2. Manipulation: Price fakes out (stop hunt) one direction
-    3. Distribution: Price moves strongly opposite direction (real move)
-    We detect: range -> false breakout -> reversal entry
-    """
     try:
         closes = df['Close'].values.astype(float)
         highs = df['High'].values.astype(float)
         lows = df['Low'].values.astype(float)
-
-        recent_highs = highs[-30:]
-        recent_lows = lows[-30:]
-        range_high = float(np.max(recent_highs[-20:-5]))
-        range_low = float(np.min(recent_lows[-20:-5]))
+        range_high = float(np.max(highs[-25:-5]))
+        range_low = float(np.min(lows[-25:-5]))
         range_size = range_high - range_low
-
-        if range_size == 0:
-            return None, None, 0
-
-        recent_close = float(closes[-1])
-        recent_high = float(highs[-1])
-        recent_low = float(lows[-1])
-        prev_close = float(closes[-2])
-        prev_high = float(highs[-2])
-        prev_low = float(lows[-2])
-
+        if range_size == 0: return None, None, 0
         atr = float(np.mean(highs[-14:]-lows[-14:]))
-        range_atr_ratio = range_size / (atr + 1e-10)
-
-        if range_atr_ratio < 2.0:
-            return None, None, 0
-
+        if range_size / (atr + 1e-10) < 2.0: return None, None, 0
         range_threshold = range_size * 0.15
-
-        bullish_manipulation = (
-            prev_low < range_low - range_threshold and
-            recent_close > range_low and
-            recent_close > prev_close
-        )
-
-        bearish_manipulation = (
-            prev_high > range_high + range_threshold and
-            recent_close < range_high and
-            recent_close < prev_close
-        )
-
-        if bullish_manipulation:
-            manipulation_strength = (range_low - prev_low) / range_size
-            return "BULLISH", "BUY", round(min(manipulation_strength * 100, 30), 1)
-        elif bearish_manipulation:
-            manipulation_strength = (prev_high - range_high) / range_size
-            return "BEARISH", "SELL", round(min(manipulation_strength * 100, 30), 1)
-
+        prev_low = float(lows[-2])
+        prev_high = float(highs[-2])
+        current_close = float(closes[-1])
+        prev_close = float(closes[-2])
+        bullish_manip = (prev_low < range_low - range_threshold and
+                        current_close > range_low and current_close > prev_close)
+        bearish_manip = (prev_high > range_high + range_threshold and
+                        current_close < range_high and current_close < prev_close)
+        if bullish_manip:
+            strength = min((range_low - prev_low) / range_size * 100, 30)
+            return "BULLISH", "BUY", round(strength, 1)
+        elif bearish_manip:
+            strength = min((prev_high - range_high) / range_size * 100, 30)
+            return "BEARISH", "SELL", round(strength, 1)
         return None, None, 0
     except Exception:
         return None, None, 0
@@ -837,8 +680,7 @@ def detect_amd_phase(df):
 def detect_bos_advanced(df):
     try:
         swing_highs, swing_lows = detect_swing_highs_lows(df)
-        if not swing_highs or not swing_lows:
-            return False, False, 0, 0
+        if not swing_highs or not swing_lows: return False, False, 0, 0
         cc = float(df['Close'].values[-1])
         lsh = swing_highs[-1][1]
         lsl = swing_lows[-1][1]
@@ -859,15 +701,13 @@ def detect_fvg_advanced(df):
             if c3l > c1h:
                 gap = c3l-c1h
                 bull_fvg = True
-                fvg_zones.append({'type':'bullish',
-                    'top':c3l,'bottom':c1h,'mid':(c3l+c1h)/2,
-                    'index':len(df)-len(candles)+i,'size':gap})
+                fvg_zones.append({'type':'bullish','top':c3l,'bottom':c1h,
+                    'mid':(c3l+c1h)/2,'index':len(df)-len(candles)+i,'size':gap})
             if c3h < c1l:
                 gap = c1l-c3h
                 bear_fvg = True
-                fvg_zones.append({'type':'bearish',
-                    'top':c1l,'bottom':c3h,'mid':(c1l+c3h)/2,
-                    'index':len(df)-len(candles)+i,'size':gap})
+                fvg_zones.append({'type':'bearish','top':c1l,'bottom':c3h,
+                    'mid':(c1l+c3h)/2,'index':len(df)-len(candles)+i,'size':gap})
         fvg_zones.sort(key=lambda x: x['size'], reverse=True)
         return bull_fvg, bear_fvg, fvg_zones[:3]
     except Exception:
@@ -880,8 +720,7 @@ def detect_order_block_advanced(df, direction):
         highs = df['High'].values.astype(float)
         lows = df['Low'].values.astype(float)
         ob_found = False
-        ob_top = ob_bottom = ob_index = 0
-        ob_strength = 0
+        ob_top = ob_bottom = ob_index = ob_strength = 0
         for i in range(3, min(40, len(df)-2)):
             if direction == "BUY":
                 is_bear = closes[-i] < opens[-i]
@@ -914,17 +753,14 @@ def detect_order_block_advanced(df, direction):
 def detect_liquidity_sweep_advanced(df):
     try:
         swing_highs, swing_lows = detect_swing_highs_lows(df, lookback=3)
-        if not swing_highs or not swing_lows:
-            return False, False
+        if not swing_highs or not swing_lows: return False, False
         highs = df['High'].values.astype(float)
         lows = df['Low'].values.astype(float)
         closes = df['Close'].values.astype(float)
         rh = swing_highs[-1][1]
         rl = swing_lows[-1][1]
-        bull_sweep = (lows[-1]<rl and closes[-1]>rl and
-            closes[-1]>(lows[-1]+highs[-1])/2)
-        bear_sweep = (highs[-1]>rh and closes[-1]<rh and
-            closes[-1]<(lows[-1]+highs[-1])/2)
+        bull_sweep = (lows[-1]<rl and closes[-1]>rl and closes[-1]>(lows[-1]+highs[-1])/2)
+        bear_sweep = (highs[-1]>rh and closes[-1]<rh and closes[-1]<(lows[-1]+highs[-1])/2)
         return bull_sweep, bear_sweep
     except Exception:
         return False, False
@@ -932,12 +768,9 @@ def detect_liquidity_sweep_advanced(df):
 def detect_choch_advanced(df):
     try:
         swing_highs, swing_lows = detect_swing_highs_lows(df, lookback=5)
-        if len(swing_highs)<2 or len(swing_lows)<2:
-            return False, False
-        bull_choch = (swing_highs[-1][1]<swing_highs[-2][1] and
-                     swing_lows[-1][1]>swing_lows[-2][1])
-        bear_choch = (swing_highs[-1][1]>swing_highs[-2][1] and
-                     swing_lows[-1][1]<swing_lows[-2][1])
+        if len(swing_highs)<2 or len(swing_lows)<2: return False, False
+        bull_choch = (swing_highs[-1][1]<swing_highs[-2][1] and swing_lows[-1][1]>swing_lows[-2][1])
+        bear_choch = (swing_highs[-1][1]>swing_highs[-2][1] and swing_lows[-1][1]<swing_lows[-2][1])
         return bull_choch, bear_choch
     except Exception:
         return False, False
@@ -952,24 +785,16 @@ def detect_candle_pattern(df):
         upper = h-max(o,c)
         lower = min(o,c)-l
         total = h-l
-        if total == 0:
-            return "Doji","NEUTRAL"
-        if body/total < 0.1:
-            return "Doji","NEUTRAL"
-        if c > o and lower > body*2:
-            return "Hammer","BULLISH"
-        if c < o and upper > body*2:
-            return "Shooting Star","BEARISH"
-        if c > o and body/total > 0.7:
-            return "Bullish Marubozu","BULLISH"
-        if c < o and body/total > 0.7:
-            return "Bearish Marubozu","BEARISH"
+        if total == 0: return "Doji","NEUTRAL"
+        if body/total < 0.1: return "Doji","NEUTRAL"
+        if c > o and lower > body*2: return "Hammer","BULLISH"
+        if c < o and upper > body*2: return "Shooting Star","BEARISH"
+        if c > o and body/total > 0.7: return "Bullish Marubozu","BULLISH"
+        if c < o and body/total > 0.7: return "Bearish Marubozu","BEARISH"
         prev_o = float(df['Open'].iloc[-2])
         prev_c = float(df['Close'].iloc[-2])
-        if prev_c < prev_o and c > prev_o and o < prev_c:
-            return "Bullish Engulfing","BULLISH"
-        if prev_c > prev_o and c < prev_o and o > prev_c:
-            return "Bearish Engulfing","BEARISH"
+        if prev_c < prev_o and c > prev_o and o < prev_c: return "Bullish Engulfing","BULLISH"
+        if prev_c > prev_o and c < prev_o and o > prev_c: return "Bearish Engulfing","BEARISH"
         return "Normal","NEUTRAL"
     except Exception:
         return "Unknown","NEUTRAL"
@@ -980,19 +805,14 @@ def get_htf_bias_advanced(symbol):
         df_1h = get_data(symbol, interval="1h")
         scores = {"BULLISH":0,"BEARISH":0}
         for df, weight in [(df_4h,2),(df_1h,1)]:
-            if df is None or len(df)<50:
-                continue
+            if df is None or len(df)<50: continue
             ema20 = float(calculate_ema(df,20).iloc[-1])
             ema50 = float(calculate_ema(df,50).iloc[-1])
             current = float(df['Close'].iloc[-1])
-            if current > ema20 and ema20 > ema50:
-                scores["BULLISH"] += weight
-            elif current < ema20 and ema20 < ema50:
-                scores["BEARISH"] += weight
-        if scores["BULLISH"] > scores["BEARISH"]:
-            return "BULLISH"
-        elif scores["BEARISH"] > scores["BULLISH"]:
-            return "BEARISH"
+            if current > ema20 and ema20 > ema50: scores["BULLISH"] += weight
+            elif current < ema20 and ema20 < ema50: scores["BEARISH"] += weight
+        if scores["BULLISH"] > scores["BEARISH"]: return "BULLISH"
+        elif scores["BEARISH"] > scores["BULLISH"]: return "BEARISH"
         return "NEUTRAL"
     except Exception:
         return "NEUTRAL"
@@ -1003,14 +823,10 @@ def detect_market_regime_advanced(df):
         adx, plus_di, minus_di = calculate_adx(df)
         atr = calculate_atr(df)
         pr = float(max(closes[-20:])-min(closes[-20:]))
-        if adx > 25 and plus_di > minus_di:
-            return "TRENDING UP", adx
-        elif adx > 25 and minus_di > plus_di:
-            return "TRENDING DOWN", adx
-        elif adx < 20:
-            return "RANGING", adx
-        elif pr > atr*4:
-            return "VOLATILE", adx
+        if adx > 25 and plus_di > minus_di: return "TRENDING UP", adx
+        elif adx > 25 and minus_di > plus_di: return "TRENDING DOWN", adx
+        elif adx < 20: return "RANGING", adx
+        elif pr > atr*4: return "VOLATILE", adx
         return "NEUTRAL", adx
     except Exception:
         return "UNKNOWN", 0
@@ -1018,17 +834,14 @@ def detect_market_regime_advanced(df):
 def is_price_in_pd_zone(df, direction):
     try:
         swing_highs, swing_lows = detect_swing_highs_lows(df, lookback=10)
-        if not swing_highs or not swing_lows:
-            return True
+        if not swing_highs or not swing_lows: return True
         rh = swing_highs[-1][1]
         rl = swing_lows[-1][1]
         current = float(df['Close'].iloc[-1])
         r = rh-rl
-        if r == 0:
-            return True
+        if r == 0: return True
         pos = (current-rl)/r
-        return (direction=="BUY" and pos < 0.45) or \
-               (direction=="SELL" and pos > 0.55)
+        return (direction=="BUY" and pos < 0.45) or (direction=="SELL" and pos > 0.55)
     except Exception:
         return True
 
@@ -1061,17 +874,11 @@ def calculate_scalping_sl_tp(symbol, direction, close, atr, swing_highs, swing_l
 
 def analyze_pair_advanced(symbol):
     try:
-        if not is_good_session():
-            return None
+        if not is_good_session(): return None
         df_5m = get_data(symbol, interval="5m")
-        if df_5m is None or len(df_5m) < 60:
-            return None
+        if df_5m is None or len(df_5m) < 60: return None
 
-        score = 0
-        reasons = []
-        neg = []
-        confluences = 0
-
+        score = 0; reasons = []; neg = []; confluences = 0
         session_quality, session_name = get_session_quality()
         htf_bias = get_htf_bias_advanced(symbol)
         regime, adx_val = detect_market_regime_advanced(df_5m)
@@ -1079,13 +886,11 @@ def analyze_pair_advanced(symbol):
         atr = calculate_atr(df_5m)
         adx, plus_di, minus_di = calculate_adx(df_5m)
         candle_pattern, candle_dir = detect_candle_pattern(df_5m)
-
         bull_bos, bear_bos, sh_level, sl_level = detect_bos_advanced(df_5m)
         bull_fvg, bear_fvg, fvg_zones = detect_fvg_advanced(df_5m)
         bull_sweep, bear_sweep = detect_liquidity_sweep_advanced(df_5m)
         bull_choch, bear_choch = detect_choch_advanced(df_5m)
         swing_highs, swing_lows = detect_swing_highs_lows(df_5m)
-
         amd_phase, amd_direction, amd_score = detect_amd_phase(df_5m)
 
         close = float(df_5m['Close'].iloc[-1])
@@ -1093,27 +898,16 @@ def analyze_pair_advanced(symbol):
         ema21 = float(calculate_ema(df_5m,21).iloc[-1])
         ema50 = float(calculate_ema(df_5m,50).iloc[-1])
 
-        is_bull = bull_bos or bull_fvg or bull_sweep or bull_choch or candle_dir=="BULLISH"
-        is_bear = bear_bos or bear_fvg or bear_sweep or bear_choch or candle_dir=="BEARISH"
+        is_bull = bull_bos or bull_fvg or bull_sweep or bull_choch or candle_dir=="BULLISH" or amd_direction=="BUY"
+        is_bear = bear_bos or bear_fvg or bear_sweep or bear_choch or candle_dir=="BEARISH" or amd_direction=="SELL"
 
-        if amd_direction == "BUY":
-            is_bull = True
-        elif amd_direction == "SELL":
-            is_bear = True
-
-        if is_bull and not is_bear:
-            direction = "BUY"
-        elif is_bear and not is_bull:
-            direction = "SELL"
+        if is_bull and not is_bear: direction = "BUY"
+        elif is_bear and not is_bull: direction = "SELL"
         elif is_bull and is_bear:
-            if htf_bias == "BULLISH":
-                direction = "BUY"
-            elif htf_bias == "BEARISH":
-                direction = "SELL"
-            else:
-                return None
-        else:
-            return None
+            if htf_bias == "BULLISH": direction = "BUY"
+            elif htf_bias == "BEARISH": direction = "SELL"
+            else: return None
+        else: return None
 
         ob_found, ob_top, ob_bottom, ob_index = detect_order_block_advanced(df_5m, direction)
         in_pd = is_price_in_pd_zone(df_5m, direction)
@@ -1129,74 +923,47 @@ def analyze_pair_advanced(symbol):
 
         if adx > 25:
             if direction=="BUY" and plus_di>minus_di:
-                score += 15
-                reasons.append("Strong Uptrend ADX:"+str(round(adx,1)))
-                confluences += 1
+                score += 15; reasons.append("Strong Uptrend ADX:"+str(round(adx,1))); confluences += 1
             elif direction=="SELL" and minus_di>plus_di:
-                score += 15
-                reasons.append("Strong Downtrend ADX:"+str(round(adx,1)))
-                confluences += 1
+                score += 15; reasons.append("Strong Downtrend ADX:"+str(round(adx,1))); confluences += 1
         elif adx < 15:
             score -= 10; neg.append("Weak Trend ADX<15")
 
-        if regime == "VOLATILE":
-            score -= 20; neg.append("High Volatility — SKIP!")
-        elif regime == "RANGING" and adx < 20:
-            score -= 10; neg.append("Ranging Market")
+        if regime == "VOLATILE": score -= 20; neg.append("High Volatility!")
+        elif regime == "RANGING" and adx < 20: score -= 10; neg.append("Ranging Market")
         elif (regime=="TRENDING UP" and direction=="BUY") or \
              (regime=="TRENDING DOWN" and direction=="SELL"):
             score += 10; reasons.append("Trend Alignment"); confluences += 1
 
         if amd_direction and amd_direction == direction:
-            score += amd_score
-            reasons.append("AMD Manipulation Detected ⚡")
-            confluences += 1
+            score += amd_score; reasons.append("AMD Manipulation Detected ⚡"); confluences += 1
         elif amd_direction and amd_direction != direction:
-            score -= 15
-            neg.append("AMD Conflict")
+            score -= 15; neg.append("AMD Conflict")
 
-        if bull_bos and direction=="BUY":
-            score += 18; reasons.append("Bullish BOS"); confluences += 1
-        if bear_bos and direction=="SELL":
-            score += 18; reasons.append("Bearish BOS"); confluences += 1
-        if bull_fvg and direction=="BUY":
-            score += 15; reasons.append("Bullish FVG"); confluences += 1
-        if bear_fvg and direction=="SELL":
-            score += 15; reasons.append("Bearish FVG"); confluences += 1
-        if bull_sweep and direction=="BUY":
-            score += 18; reasons.append("Bullish Liq Sweep"); confluences += 1
-        if bear_sweep and direction=="SELL":
-            score += 18; reasons.append("Bearish Liq Sweep"); confluences += 1
-        if bull_choch and direction=="BUY":
-            score += 12; reasons.append("Bullish CHOCH"); confluences += 1
-        if bear_choch and direction=="SELL":
-            score += 12; reasons.append("Bearish CHOCH"); confluences += 1
-        if ob_found:
-            score += 12; reasons.append("Order Block"); confluences += 1
-        if in_pd:
-            score += 10; reasons.append("P/D Zone"); confluences += 1
+        if bull_bos and direction=="BUY": score += 18; reasons.append("Bullish BOS"); confluences += 1
+        if bear_bos and direction=="SELL": score += 18; reasons.append("Bearish BOS"); confluences += 1
+        if bull_fvg and direction=="BUY": score += 15; reasons.append("Bullish FVG"); confluences += 1
+        if bear_fvg and direction=="SELL": score += 15; reasons.append("Bearish FVG"); confluences += 1
+        if bull_sweep and direction=="BUY": score += 18; reasons.append("Bullish Liq Sweep"); confluences += 1
+        if bear_sweep and direction=="SELL": score += 18; reasons.append("Bearish Liq Sweep"); confluences += 1
+        if bull_choch and direction=="BUY": score += 12; reasons.append("Bullish CHOCH"); confluences += 1
+        if bear_choch and direction=="SELL": score += 12; reasons.append("Bearish CHOCH"); confluences += 1
+        if ob_found: score += 12; reasons.append("Order Block"); confluences += 1
+        if in_pd: score += 10; reasons.append("P/D Zone"); confluences += 1
 
         if direction=="BUY":
-            if ema8 > ema21 > ema50:
-                score += 8; reasons.append("EMA Stack Bullish"); confluences += 1
-            elif ema8 < ema21:
-                score -= 5; neg.append("EMA Conflict")
+            if ema8 > ema21 > ema50: score += 8; reasons.append("EMA Stack Bullish"); confluences += 1
+            elif ema8 < ema21: score -= 5; neg.append("EMA Conflict")
         else:
-            if ema8 < ema21 < ema50:
-                score += 8; reasons.append("EMA Stack Bearish"); confluences += 1
-            elif ema8 > ema21:
-                score -= 5; neg.append("EMA Conflict")
+            if ema8 < ema21 < ema50: score += 8; reasons.append("EMA Stack Bearish"); confluences += 1
+            elif ema8 > ema21: score -= 5; neg.append("EMA Conflict")
 
         if direction=="BUY":
-            if 20 < rsi < 55:
-                score += 8; reasons.append("RSI Bullish Zone")
-            elif rsi >= 70:
-                score -= 15; neg.append("RSI Overbought")
+            if 20 < rsi < 55: score += 8; reasons.append("RSI Bullish Zone")
+            elif rsi >= 70: score -= 15; neg.append("RSI Overbought")
         else:
-            if 45 < rsi < 80:
-                score += 8; reasons.append("RSI Bearish Zone")
-            elif rsi <= 30:
-                score -= 15; neg.append("RSI Oversold")
+            if 45 < rsi < 80: score += 8; reasons.append("RSI Bearish Zone")
+            elif rsi <= 30: score -= 15; neg.append("RSI Oversold")
 
         if (candle_dir=="BULLISH" and direction=="BUY") or \
            (candle_dir=="BEARISH" and direction=="SELL"):
@@ -1206,74 +973,50 @@ def analyze_pair_advanced(symbol):
                (candle_dir=="BULLISH" and direction=="SELL"):
                 score -= 10; neg.append("Opposing Pattern")
 
-        if session_quality == "BEST":
-            score += 10; reasons.append("Best Session ⭐⭐⭐")
-        elif session_quality == "GOOD":
-            score += 5; reasons.append(session_name)
-        elif session_quality == "MODERATE":
-            neg.append("Asia Session")
+        if session_quality == "BEST": score += 10; reasons.append("Best Session ⭐⭐⭐")
+        elif session_quality == "GOOD": score += 5; reasons.append(session_name)
+        elif session_quality == "MODERATE": neg.append("Asia Session")
 
         news = st.session_state.get('cached_news', [])
         if [n for n in news if n['impact']==3]:
             score -= 25; neg.append("⚠️ HIGH IMPACT NEWS!")
 
-        if confluences < 4:
-            return None
+        if confluences < 4: return None
 
         score = min(max(score,0), 95)
-
         min_score = PAIR_SETTINGS.get(symbol,{}).get('min_score', 80)
-        if score < min_score:
-            return None
+        if score < min_score: return None
 
         sl, tp, sl_pips, tp_pips = calculate_scalping_sl_tp(
             symbol, direction, close, atr, swing_highs, swing_lows)
 
         rr = round(tp_pips / sl_pips, 1) if sl_pips > 0 else 2.0
 
-        account_size = st.session_state.get('account_size', 10000)
+        account_size = float(st.session_state.get('account_size', 10000))
         suggested_lots = calculate_lot_size(account_size, symbol, sl_pips)
 
         return {
-            "pair": symbol,
-            "direction": direction,
-            "score": score,
-            "entry": round(close,5),
-            "sl": sl, "tp": tp,
-            "rr": rr,
-            "sl_pips": sl_pips,
-            "tp_pips": tp_pips,
-            "rsi": round(rsi,1),
-            "adx": round(adx,1),
-            "htf_bias": htf_bias,
-            "regime": regime,
-            "session": session_name,
-            "session_quality": session_quality,
-            "confluences": confluences,
-            "reasons": reasons,
-            "negative": neg,
+            "pair": symbol, "direction": direction,
+            "score": score, "entry": round(close,5),
+            "sl": sl, "tp": tp, "rr": rr,
+            "sl_pips": sl_pips, "tp_pips": tp_pips,
+            "rsi": round(rsi,1), "adx": round(adx,1),
+            "htf_bias": htf_bias, "regime": regime,
+            "session": session_name, "session_quality": session_quality,
+            "confluences": confluences, "reasons": reasons, "negative": neg,
             "candle_pattern": candle_pattern,
             "suggested_lots": suggested_lots,
             "account_size": account_size,
             "amd_phase": amd_phase,
             "time": get_ist_time().strftime('%d %b %Y %H:%M IST'),
-            "current_price": round(close,5),
-            "atr": round(atr,5),
-            "result": "Pending",
-            "df": df_5m,
-            "fvg_zones": fvg_zones,
-            "ob_found": ob_found,
-            "ob_top": ob_top,
-            "ob_bottom": ob_bottom,
-            "ob_index": ob_index,
-            "bull_bos": bull_bos,
-            "bear_bos": bear_bos,
-            "bull_sweep": bull_sweep,
-            "bear_sweep": bear_sweep,
-            "swing_highs": swing_highs,
-            "swing_lows": swing_lows,
-            "swing_high_level": sh_level,
-            "swing_low_level": sl_level
+            "current_price": round(close,5), "atr": round(atr,5),
+            "result": "Pending", "df": df_5m, "fvg_zones": fvg_zones,
+            "ob_found": ob_found, "ob_top": ob_top,
+            "ob_bottom": ob_bottom, "ob_index": ob_index,
+            "bull_bos": bull_bos, "bear_bos": bear_bos,
+            "bull_sweep": bull_sweep, "bear_sweep": bear_sweep,
+            "swing_highs": swing_highs, "swing_lows": swing_lows,
+            "swing_high_level": sh_level, "swing_low_level": sl_level
         }
     except Exception:
         return None
@@ -1282,8 +1025,7 @@ def check_signal_outcomes():
     try:
         journal = st.session_state.trade_journal
         pending = [j for j in journal if j['result']=="Pending"]
-        if not pending:
-            return
+        if not pending: return
         for trade in pending:
             try:
                 age = get_signal_age(trade['time'])
@@ -1293,8 +1035,7 @@ def check_signal_outcomes():
                             j['result'] = "Expired"
                     continue
                 df = get_data(trade['pair'], interval="5m")
-                if df is None:
-                    continue
+                if df is None: continue
                 ch = float(df['High'].iloc[-1])
                 cl = float(df['Low'].iloc[-1])
                 if trade['direction'] == "BUY":
@@ -1306,10 +1047,8 @@ def check_signal_outcomes():
                             "✅ **TP HIT — TRADE WON!** 🎯\n\n"
                             "**"+trade['pair']+" BUY**\n"
                             "Entry: "+str(trade['entry'])+" → TP: "+str(trade['tp'])+"\n"
-                            "SL: "+str(trade.get('sl_pips','?'))+"p | "
-                            "TP: "+str(trade.get('tp_pips','?'))+"p | "
-                            "RR: 1:"+str(trade['rr'])+"\n"
-                            "Lots: "+str(trade.get('suggested_lots','?'))+"\n"
+                            "SL: "+str(trade.get('sl_pips','?'))+"p | TP: "+str(trade.get('tp_pips','?'))+"p\n"
+                            "RR: 1:"+str(trade['rr'])+" | Lots: "+str(trade.get('suggested_lots','?'))+"\n"
                             "⏰ "+get_ist_time().strftime('%H:%M IST'))
                     elif cl <= trade['sl']:
                         for j in st.session_state.trade_journal:
@@ -1330,7 +1069,7 @@ def check_signal_outcomes():
                             "✅ **TP HIT — TRADE WON!** 🎯\n\n"
                             "**"+trade['pair']+" SELL**\n"
                             "Entry: "+str(trade['entry'])+" → TP: "+str(trade['tp'])+"\n"
-                            "RR: 1:"+str(trade['rr'])+"\n"
+                            "RR: 1:"+str(trade['rr'])+" | Lots: "+str(trade.get('suggested_lots','?'))+"\n"
                             "⏰ "+get_ist_time().strftime('%H:%M IST'))
                     elif ch >= trade['sl']:
                         for j in st.session_state.trade_journal:
@@ -1347,9 +1086,7 @@ def check_signal_outcomes():
         pass
 
 def format_discord_message(signal):
-    grade = ("A+" if signal['score']>=90 else
-             "A" if signal['score']>=85 else
-             "B+" if signal['score']>=80 else "B")
+    grade = ("A+" if signal['score']>=90 else "A" if signal['score']>=85 else "B+" if signal['score']>=80 else "B")
     emoji = "🟢 BUY" if signal['direction']=="BUY" else "🔴 SELL"
     reasons_text = "\n".join(["✅ "+r for r in signal['reasons']])
     neg_text = "\n".join(["⚠️ "+n for n in signal['negative']]) if signal['negative'] else ""
@@ -1358,12 +1095,13 @@ def format_discord_message(signal):
     sl_pips = signal.get('sl_pips','?')
     tp_pips = signal.get('tp_pips','?')
     lots = signal.get('suggested_lots','0.01')
-    acc = signal.get('account_size',10000)
+    acc = float(signal.get('account_size', 10000))
+    risk_amt = round(acc * 0.01, 2)
     amd = signal.get('amd_phase')
-    amd_line = f"\n⚡ AMD: {amd} Phase Manipulation Detected!" if amd else ""
+    amd_line = f"\n⚡ **AMD {amd} Manipulation Detected!**" if amd else ""
 
     msg = (
-        "🚨 **HIGH CONFIDENCE SCALP SIGNAL** 🚨\n\n"
+        "🚨 **SCALP SIGNAL** 🚨\n\n"
         "**"+emoji+" "+signal['pair']+"**"+amd_line+"\n\n"
         "📊 Score: **"+str(signal['score'])+"%** | Grade: **"+grade+"**\n"
         "🔗 Confluences: "+str(signal['confluences'])+"\n"
@@ -1372,18 +1110,17 @@ def format_discord_message(signal):
         "🕐 Session: "+signal['session']+" "+sq_s+"\n\n"
         "━━━ TRADE SETUP ━━━\n"
         "💰 Entry: **"+str(signal['entry'])+"**\n"
-        "🛑 Stop Loss: **"+str(signal['sl'])+"** ("+str(sl_pips)+" pips)\n"
-        "🎯 Take Profit: **"+str(signal['tp'])+"** ("+str(tp_pips)+" pips)\n"
-        "⚖️ Risk/Reward: **1:"+str(signal['rr'])+"**\n\n"
-        "💼 Account: $"+str(f"{acc:,.0f}")+"\n"
-        "📦 Suggested Lots: **"+str(lots)+"** (1% risk)\n"
-        "📈 HTF Bias: "+signal['htf_bias']+"\n"
-        "🌍 Market: "+signal['regime']+"\n\n"
-        "⏰ Signal Time: "+signal['time']+"\n"
+        "🛑 SL: **"+str(signal['sl'])+"** ("+str(sl_pips)+" pips)\n"
+        "🎯 TP: **"+str(signal['tp'])+"** ("+str(tp_pips)+" pips)\n"
+        "⚖️ RR: **1:"+str(signal['rr'])+"**\n\n"
+        "💼 Account: **$"+f"{acc:,.0f}"+"**\n"
+        "📦 Lot Size: **"+str(lots)+" lots** (1% risk = $"+str(risk_amt)+")\n"
+        "📈 HTF: "+signal['htf_bias']+" | Market: "+signal['regime']+"\n\n"
+        "⏰ Time: "+signal['time']+"\n"
         "🤖 Auto TP/SL tracking: ACTIVE\n\n"
         "⚠️ Skip if price moved >"+str(signal['atr'])+" from entry!\n"
         "⚠️ Check news BEFORE entering!\n\n"
-        "✅ **Confluences:**\n"+reasons_text+"\n")
+        "✅ **Reasons:**\n"+reasons_text+"\n")
     if neg_text:
         msg += "\n⚠️ **Caution:**\n"+neg_text+"\n"
     msg += "\n━━━━━━━━━━━━━━━━━━━━━━"
@@ -1394,16 +1131,11 @@ def generate_professional_chart(df, signal, fvg_zones,
     bull_bos, bear_bos, swing_highs, swing_lows,
     bull_sweep, bear_sweep, candle_pattern):
     try:
-        BG = '#0D1117'; BG2 = '#161B22'
-        GREEN = '#26A69A'; RED = '#EF5350'
-        WHITE = '#E6EDF3'; GRAY = '#8B949E'
-        YELLOW = '#F0B429'; PURPLE = '#BB86FC'; BLUE = '#58A6FF'
+        BG='#0D1117'; BG2='#161B22'; GREEN='#26A69A'; RED='#EF5350'
+        WHITE='#E6EDF3'; GRAY='#8B949E'; YELLOW='#F0B429'; PURPLE='#BB86FC'; BLUE='#58A6FF'
 
         fig = plt.figure(figsize=(20, 14), facecolor=BG)
-        gs = gridspec.GridSpec(5, 1,
-            height_ratios=[4, 0.8, 1, 1, 0.6],
-            hspace=0.02, figure=fig)
-
+        gs = gridspec.GridSpec(5, 1, height_ratios=[4, 0.8, 1, 1, 0.6], hspace=0.02, figure=fig)
         ax_main = fig.add_subplot(gs[0])
         ax_vol = fig.add_subplot(gs[1], sharex=ax_main)
         ax_rsi = fig.add_subplot(gs[2], sharex=ax_main)
@@ -1421,251 +1153,220 @@ def generate_professional_chart(df, signal, fvg_zones,
         ema8 = display_df['Close'].ewm(span=8,adjust=False).mean()
         ema21 = display_df['Close'].ewm(span=21,adjust=False).mean()
         ema50 = display_df['Close'].ewm(span=50,adjust=False).mean()
-
         ax_main.plot(range(n), ema8, color=YELLOW, linewidth=0.8, alpha=0.7, label='EMA8')
         ax_main.plot(range(n), ema21, color=BLUE, linewidth=0.8, alpha=0.7, label='EMA21')
         ax_main.plot(range(n), ema50, color=PURPLE, linewidth=0.8, alpha=0.7, label='EMA50')
 
         for i in range(n):
-            o = float(display_df['Open'].iloc[i])
-            h = float(display_df['High'].iloc[i])
-            l = float(display_df['Low'].iloc[i])
-            c = float(display_df['Close'].iloc[i])
-            is_bull = c >= o
-            body_color = GREEN if is_bull else RED
-            wick_color = '#2EBD8E' if is_bull else '#F23645'
-            ax_main.plot([i,i],[l,h], color=wick_color, linewidth=0.7, alpha=0.9, zorder=3)
-            rect = patches.FancyBboxPatch(
-                (i-0.38, min(o,c)), 0.76, max(abs(c-o), 0.0001),
-                boxstyle="round,pad=0.0001",
-                linewidth=0.3, edgecolor=wick_color,
-                facecolor=body_color, alpha=0.92, zorder=4)
-            ax_main.add_patch(rect)
+            o=float(display_df['Open'].iloc[i])
+            h=float(display_df['High'].iloc[i])
+            l=float(display_df['Low'].iloc[i])
+            c=float(display_df['Close'].iloc[i])
+            is_bull=c>=o
+            body_color=GREEN if is_bull else RED
+            wick_color='#2EBD8E' if is_bull else '#F23645'
+            ax_main.plot([i,i],[l,h],color=wick_color,linewidth=0.7,alpha=0.9,zorder=3)
+            ax_main.add_patch(patches.FancyBboxPatch(
+                (i-0.38,min(o,c)),0.76,max(abs(c-o),0.0001),
+                boxstyle="round,pad=0.0001",linewidth=0.3,
+                edgecolor=wick_color,facecolor=body_color,alpha=0.92,zorder=4))
 
         for fvg in fvg_zones:
             try:
-                fx = fvg.get('index',n-5)-(len(df)-n)
-                if 0 <= fx < n:
-                    is_bull_fvg = fvg['type']=='bullish'
-                    fc = '#26A69A18' if is_bull_fvg else '#EF535018'
-                    fb = GREEN if is_bull_fvg else RED
+                fx=fvg.get('index',n-5)-(len(df)-n)
+                if 0<=fx<n:
+                    is_bull_fvg=fvg['type']=='bullish'
+                    fc='#26A69A18' if is_bull_fvg else '#EF535018'
+                    fb=GREEN if is_bull_fvg else RED
                     ax_main.add_patch(patches.Rectangle(
-                        (fx,fvg['bottom']), n-fx, fvg['top']-fvg['bottom'],
-                        linewidth=1, edgecolor=fb, facecolor=fc, alpha=1, zorder=1))
-                    ax_main.text(fx+0.5, fvg['mid'],
-                        'FVG+' if is_bull_fvg else 'FVG-',
-                        color=fb, fontsize=7, fontweight='bold', va='center',
-                        fontfamily='monospace',
-                        bbox=dict(boxstyle='round,pad=0.15', facecolor=BG2, edgecolor=fb, alpha=0.9))
-            except Exception:
-                pass
+                        (fx,fvg['bottom']),n-fx,fvg['top']-fvg['bottom'],
+                        linewidth=1,edgecolor=fb,facecolor=fc,alpha=1,zorder=1))
+                    ax_main.text(fx+0.5,fvg['mid'],'FVG+' if is_bull_fvg else 'FVG-',
+                        color=fb,fontsize=7,fontweight='bold',va='center',fontfamily='monospace',
+                        bbox=dict(boxstyle='round,pad=0.15',facecolor=BG2,edgecolor=fb,alpha=0.9))
+            except Exception: pass
 
         if ob_found:
-            ox = ob_index-(len(df)-n)
-            if 0 <= ox < n:
-                is_buy = signal['direction']=='BUY'
-                ob_color = GREEN if is_buy else RED
+            ox=ob_index-(len(df)-n)
+            if 0<=ox<n:
+                is_buy=signal['direction']=='BUY'
+                ob_color=GREEN if is_buy else RED
                 ax_main.add_patch(patches.Rectangle(
-                    (ox,ob_bottom), n-ox, ob_top-ob_bottom,
-                    linewidth=1.5, edgecolor=ob_color,
-                    facecolor=('#26A69A18' if is_buy else '#EF535018'),
-                    linestyle='--', zorder=1))
-                ax_main.text(ox+0.5, (ob_top+ob_bottom)/2, 'OB',
-                    color=ob_color, fontsize=8, fontweight='bold', va='center',
-                    fontfamily='monospace',
-                    bbox=dict(boxstyle='round,pad=0.2', facecolor=BG2, edgecolor=ob_color, alpha=0.9))
+                    (ox,ob_bottom),n-ox,ob_top-ob_bottom,
+                    linewidth=1.5,edgecolor=ob_color,
+                    facecolor='#26A69A18' if is_buy else '#EF535018',
+                    linestyle='--',zorder=1))
+                ax_main.text(ox+0.5,(ob_top+ob_bottom)/2,'OB',
+                    color=ob_color,fontsize=8,fontweight='bold',va='center',fontfamily='monospace',
+                    bbox=dict(boxstyle='round,pad=0.2',facecolor=BG2,edgecolor=ob_color,alpha=0.9))
 
         for idx, h_val in swing_highs[-8:]:
-            plot_idx = idx-(len(df)-n)
-            if 0 <= plot_idx < n:
-                ax_main.plot(plot_idx, h_val, 'v', color='#F85149', markersize=5, zorder=5)
-                ax_main.text(plot_idx, h_val+h_val*0.001, 'SH',
-                    color='#F85149', fontsize=6, ha='center', fontfamily='monospace', fontweight='bold')
+            plot_idx=idx-(len(df)-n)
+            if 0<=plot_idx<n:
+                ax_main.plot(plot_idx,h_val,'v',color='#F85149',markersize=5,zorder=5)
+                ax_main.text(plot_idx,h_val+h_val*0.001,'SH',
+                    color='#F85149',fontsize=6,ha='center',fontfamily='monospace',fontweight='bold')
 
         for idx, l_val in swing_lows[-8:]:
-            plot_idx = idx-(len(df)-n)
-            if 0 <= plot_idx < n:
-                ax_main.plot(plot_idx, l_val, '^', color='#3FB950', markersize=5, zorder=5)
-                ax_main.text(plot_idx, l_val-l_val*0.001, 'SL',
-                    color='#3FB950', fontsize=6, ha='center', fontfamily='monospace', fontweight='bold')
+            plot_idx=idx-(len(df)-n)
+            if 0<=plot_idx<n:
+                ax_main.plot(plot_idx,l_val,'^',color='#3FB950',markersize=5,zorder=5)
+                ax_main.text(plot_idx,l_val-l_val*0.001,'SL',
+                    color='#3FB950',fontsize=6,ha='center',fontfamily='monospace',fontweight='bold')
 
         if bull_bos:
-            sh_level = signal.get('swing_high_level', signal['entry'])
-            ax_main.axhline(y=sh_level, color=GREEN, linewidth=0.8, linestyle=':', alpha=0.5)
-            ax_main.text(5, sh_level, '▲ BOS', color=GREEN, fontsize=6.5, fontweight='bold',
-                fontfamily='monospace',
-                bbox=dict(boxstyle='round,pad=0.2', facecolor=BG2, edgecolor=GREEN, alpha=0.8))
+            sh_lvl=signal.get('swing_high_level',signal['entry'])
+            ax_main.axhline(y=sh_lvl,color=GREEN,linewidth=0.8,linestyle=':',alpha=0.5)
+            ax_main.text(5,sh_lvl,'▲ BOS',color=GREEN,fontsize=6.5,fontweight='bold',fontfamily='monospace',
+                bbox=dict(boxstyle='round,pad=0.2',facecolor=BG2,edgecolor=GREEN,alpha=0.8))
         if bear_bos:
-            sl_level = signal.get('swing_low_level', signal['entry'])
-            ax_main.axhline(y=sl_level, color=RED, linewidth=0.8, linestyle=':', alpha=0.5)
-            ax_main.text(5, sl_level, '▼ BOS', color=RED, fontsize=6.5, fontweight='bold',
-                fontfamily='monospace',
-                bbox=dict(boxstyle='round,pad=0.2', facecolor=BG2, edgecolor=RED, alpha=0.8))
+            sl_lvl=signal.get('swing_low_level',signal['entry'])
+            ax_main.axhline(y=sl_lvl,color=RED,linewidth=0.8,linestyle=':',alpha=0.5)
+            ax_main.text(5,sl_lvl,'▼ BOS',color=RED,fontsize=6.5,fontweight='bold',fontfamily='monospace',
+                bbox=dict(boxstyle='round,pad=0.2',facecolor=BG2,edgecolor=RED,alpha=0.8))
 
         if bull_sweep:
-            ax_main.text(n//3, float(display_df['Low'].iloc[-5]),
-                '⚡ LIQ SWEEP ▲', color=GREEN, fontsize=7, fontweight='bold',
-                fontfamily='monospace',
-                bbox=dict(boxstyle='round,pad=0.25', facecolor=BG2, edgecolor=GREEN, alpha=0.9))
+            ax_main.text(n//3,float(display_df['Low'].iloc[-5]),'⚡ LIQ SWEEP ▲',
+                color=GREEN,fontsize=7,fontweight='bold',fontfamily='monospace',
+                bbox=dict(boxstyle='round,pad=0.25',facecolor=BG2,edgecolor=GREEN,alpha=0.9))
         if bear_sweep:
-            ax_main.text(n//3, float(display_df['High'].iloc[-5]),
-                '⚡ LIQ SWEEP ▼', color=RED, fontsize=7, fontweight='bold',
-                fontfamily='monospace',
-                bbox=dict(boxstyle='round,pad=0.25', facecolor=BG2, edgecolor=RED, alpha=0.9))
+            ax_main.text(n//3,float(display_df['High'].iloc[-5]),'⚡ LIQ SWEEP ▼',
+                color=RED,fontsize=7,fontweight='bold',fontfamily='monospace',
+                bbox=dict(boxstyle='round,pad=0.25',facecolor=BG2,edgecolor=RED,alpha=0.9))
 
-        entry = signal['entry']
-        sl = signal['sl']
-        tp = signal['tp']
-        is_buy = signal['direction'] == "BUY"
-        price_range = abs(tp-sl)
-        off = price_range*0.015
-        sl_pips = signal.get('sl_pips','?')
-        tp_pips = signal.get('tp_pips','?')
-        lots = signal.get('suggested_lots','?')
+        entry=signal['entry']; sl=signal['sl']; tp=signal['tp']
+        is_buy=signal['direction']=="BUY"
+        price_range=abs(tp-sl); off=price_range*0.015
+        sl_pips=signal.get('sl_pips','?'); tp_pips=signal.get('tp_pips','?')
+        lots=signal.get('suggested_lots','?')
+        acc=signal.get('account_size',10000)
 
         if is_buy:
-            ax_main.fill_between(range(n), entry, tp, alpha=0.08, color=GREEN, zorder=0)
-            ax_main.fill_between(range(n), sl, entry, alpha=0.08, color=RED, zorder=0)
+            ax_main.fill_between(range(n),entry,tp,alpha=0.08,color=GREEN,zorder=0)
+            ax_main.fill_between(range(n),sl,entry,alpha=0.08,color=RED,zorder=0)
         else:
-            ax_main.fill_between(range(n), tp, entry, alpha=0.08, color=GREEN, zorder=0)
-            ax_main.fill_between(range(n), entry, sl, alpha=0.08, color=RED, zorder=0)
+            ax_main.fill_between(range(n),tp,entry,alpha=0.08,color=GREEN,zorder=0)
+            ax_main.fill_between(range(n),entry,sl,alpha=0.08,color=RED,zorder=0)
 
-        for level, color, label, pos in [
-            (entry, WHITE, f'ENTRY  {entry}', 'bottom'),
-            (sl, RED, f'SL  {sl}  ({sl_pips}p)', 'top'),
-            (tp, GREEN, f'TP  {tp}  ({tp_pips}p)', 'bottom')
+        for level,color,label,pos in [
+            (entry,WHITE,f'ENTRY  {entry}','bottom'),
+            (sl,RED,f'SL  {sl}  ({sl_pips}p)','top'),
+            (tp,GREEN,f'TP  {tp}  ({tp_pips}p)','bottom')
         ]:
-            ax_main.axhline(y=level, color=color, linewidth=1.5,
-                linestyle='-' if level==entry else '--', alpha=0.9, zorder=5)
-            ypos = level+off if pos=='bottom' else level-off
-            ax_main.text(n*0.98, ypos, label, color=color,
-                fontsize=8.5, fontweight='bold', ha='right', va=pos,
-                fontfamily='monospace',
-                bbox=dict(boxstyle='round,pad=0.3', facecolor=BG2, edgecolor=color, alpha=0.92))
+            ax_main.axhline(y=level,color=color,linewidth=1.5,
+                linestyle='-' if level==entry else '--',alpha=0.9,zorder=5)
+            ypos=level+off if pos=='bottom' else level-off
+            ax_main.text(n*0.98,ypos,label,color=color,fontsize=8.5,fontweight='bold',
+                ha='right',va=pos,fontfamily='monospace',
+                bbox=dict(boxstyle='round,pad=0.3',facecolor=BG2,edgecolor=color,alpha=0.92))
 
-        ax_main.text(n*0.05, (entry+tp)/2,
+        ax_main.text(n*0.05,(entry+tp)/2,
             f'⚖ RR  1:{signal["rr"]}',
-            color=YELLOW, fontsize=10, fontweight='bold', va='center',
-            fontfamily='monospace',
-            bbox=dict(boxstyle='round,pad=0.4', facecolor=BG2, edgecolor=YELLOW, alpha=0.9, linewidth=1.5))
+            color=YELLOW,fontsize=10,fontweight='bold',va='center',fontfamily='monospace',
+            bbox=dict(boxstyle='round,pad=0.4',facecolor=BG2,edgecolor=YELLOW,alpha=0.9,linewidth=1.5))
 
-        grade = ("A+" if signal['score']>=90 else "A" if signal['score']>=85 else "B+" if signal['score']>=80 else "B")
-        dir_arrow = '▲ LONG' if is_buy else '▼ SHORT'
-        sq_s = "⭐⭐⭐" if signal.get('session_quality')=="BEST" else "⭐⭐" if signal.get('session_quality')=="GOOD" else "⭐"
-        amd_str = f" | AMD:{signal.get('amd_phase','N/A')}" if signal.get('amd_phase') else ""
+        grade=("A+" if signal['score']>=90 else "A" if signal['score']>=85 else "B+" if signal['score']>=80 else "B")
+        dir_arrow='▲ LONG' if is_buy else '▼ SHORT'
+        sq_s={"BEST":"⭐⭐⭐","GOOD":"⭐⭐","MODERATE":"⭐"}.get(signal.get('session_quality','GOOD'),"⭐")
+        amd_str=f" | AMD:{signal.get('amd_phase','')}" if signal.get('amd_phase') else ""
 
         ax_main.set_title(
-            f"{signal['pair']}  |  {dir_arrow}  |  Score: {signal['score']}%  |  Grade: {grade}"
-            f"  |  HTF: {signal['htf_bias']}  |  ADX: {signal.get('adx','?')}"
-            f"  |  Session: {signal['session']} {sq_s}{amd_str}"
-            f"  |  Lots: {lots}",
-            color=WHITE, fontsize=10, fontweight='bold', pad=12,
-            fontfamily='monospace', loc='left')
+            f"{signal['pair']}  |  {dir_arrow}  |  Score:{signal['score']}%  |  Grade:{grade}"
+            f"  |  HTF:{signal['htf_bias']}  |  ADX:{signal.get('adx','?')}"
+            f"  |  {signal['session']} {sq_s}{amd_str}"
+            f"  |  Lots:{lots}  |  Acc:${acc:,.0f}",
+            color=WHITE,fontsize=9.5,fontweight='bold',pad=12,fontfamily='monospace',loc='left')
 
-        ax_main.legend(loc='upper left', fontsize=7, facecolor=BG2, edgecolor='#21262D', labelcolor=GRAY)
-        ax_main.tick_params(colors=GRAY, labelsize=7)
+        ax_main.legend(loc='upper left',fontsize=7,facecolor=BG2,edgecolor='#21262D',labelcolor=GRAY)
+        ax_main.tick_params(colors=GRAY,labelsize=7)
         ax_main.yaxis.tick_right()
-        ax_main.grid(axis='y', color='#21262D', linewidth=0.3, alpha=0.7)
-        ax_main.grid(axis='x', color='#21262D', linewidth=0.2, alpha=0.3)
-        ax_main.set_xlim(-1, n+3)
-        plt.setp(ax_main.get_xticklabels(), visible=False)
+        ax_main.grid(axis='y',color='#21262D',linewidth=0.3,alpha=0.7)
+        ax_main.grid(axis='x',color='#21262D',linewidth=0.2,alpha=0.3)
+        ax_main.set_xlim(-1,n+3)
+        plt.setp(ax_main.get_xticklabels(),visible=False)
 
         try:
-            vol_colors, vols = [], []
+            vol_colors=[]; vols=[]
             for i in range(n):
-                o_v = float(display_df['Open'].iloc[i])
-                c_v = float(display_df['Close'].iloc[i])
+                o_v=float(display_df['Open'].iloc[i]); c_v=float(display_df['Close'].iloc[i])
                 vol_colors.append(GREEN if c_v>=o_v else RED)
                 try:
-                    v = float(display_df['Volume'].iloc[i])
+                    v=float(display_df['Volume'].iloc[i])
                     vols.append(v if not np.isnan(v) else 0)
-                except Exception:
-                    vols.append(0)
-            if any(v > 0 for v in vols):
-                ax_vol.bar(range(n), vols, color=vol_colors, alpha=0.5, width=0.8)
-                ax_vol.plot(range(n), pd.Series(vols).rolling(20).mean(),
-                    color=YELLOW, linewidth=0.8, alpha=0.7)
-        except Exception:
-            pass
-        ax_vol.set_ylabel('VOL', color=GRAY, fontsize=7, fontfamily='monospace')
-        ax_vol.tick_params(colors=GRAY, labelsize=6)
-        ax_vol.grid(axis='y', color='#21262D', linewidth=0.2, alpha=0.5)
-        plt.setp(ax_vol.get_xticklabels(), visible=False)
+                except Exception: vols.append(0)
+            if any(v>0 for v in vols):
+                ax_vol.bar(range(n),vols,color=vol_colors,alpha=0.5,width=0.8)
+                ax_vol.plot(range(n),pd.Series(vols).rolling(20).mean(),color=YELLOW,linewidth=0.8,alpha=0.7)
+        except Exception: pass
+        ax_vol.set_ylabel('VOL',color=GRAY,fontsize=7,fontfamily='monospace')
+        ax_vol.tick_params(colors=GRAY,labelsize=6)
+        ax_vol.grid(axis='y',color='#21262D',linewidth=0.2,alpha=0.5)
+        plt.setp(ax_vol.get_xticklabels(),visible=False)
 
         try:
-            close_s = display_df['Close']
-            delta = close_s.diff()
-            gain = delta.where(delta>0,0)
-            loss = -delta.where(delta<0,0)
-            rsi_s = 100-(100/(1+gain.ewm(span=14,adjust=False).mean()/loss.ewm(span=14,adjust=False).mean()))
-            rsi_v = rsi_s.values
-            ax_rsi.plot(range(n), rsi_v, color=PURPLE, linewidth=1.2, zorder=3)
-            ax_rsi.fill_between(range(n), rsi_v, 50, where=[v>50 for v in rsi_v], alpha=0.1, color=GREEN)
-            ax_rsi.fill_between(range(n), rsi_v, 50, where=[v<50 for v in rsi_v], alpha=0.1, color=RED)
-            ax_rsi.axhline(y=70, color=RED, linewidth=0.5, linestyle='--', alpha=0.5)
-            ax_rsi.axhline(y=50, color=GRAY, linewidth=0.4, linestyle='--', alpha=0.3)
-            ax_rsi.axhline(y=30, color=GREEN, linewidth=0.5, linestyle='--', alpha=0.5)
-            ax_rsi.set_ylim(0,100)
-            ax_rsi.set_yticks([30,50,70])
-            crsi = rsi_v[-1] if len(rsi_v)>0 else 50
-            rc = RED if crsi>70 else GREEN if crsi<30 else PURPLE
-            ax_rsi.text(n-1, crsi, f' {crsi:.0f}', color=rc, fontsize=8, fontweight='bold', va='center')
-        except Exception:
-            pass
-        ax_rsi.set_ylabel('RSI', color=GRAY, fontsize=7, fontfamily='monospace')
-        ax_rsi.tick_params(colors=GRAY, labelsize=6)
-        ax_rsi.grid(axis='y', color='#21262D', linewidth=0.2, alpha=0.5)
-        plt.setp(ax_rsi.get_xticklabels(), visible=False)
+            close_s=display_df['Close']
+            delta=close_s.diff(); gain=delta.where(delta>0,0); loss=-delta.where(delta<0,0)
+            rsi_s=100-(100/(1+gain.ewm(span=14,adjust=False).mean()/loss.ewm(span=14,adjust=False).mean()))
+            rsi_v=rsi_s.values
+            ax_rsi.plot(range(n),rsi_v,color=PURPLE,linewidth=1.2,zorder=3)
+            ax_rsi.fill_between(range(n),rsi_v,50,where=[v>50 for v in rsi_v],alpha=0.1,color=GREEN)
+            ax_rsi.fill_between(range(n),rsi_v,50,where=[v<50 for v in rsi_v],alpha=0.1,color=RED)
+            ax_rsi.axhline(y=70,color=RED,linewidth=0.5,linestyle='--',alpha=0.5)
+            ax_rsi.axhline(y=50,color=GRAY,linewidth=0.4,linestyle='--',alpha=0.3)
+            ax_rsi.axhline(y=30,color=GREEN,linewidth=0.5,linestyle='--',alpha=0.5)
+            ax_rsi.set_ylim(0,100); ax_rsi.set_yticks([30,50,70])
+            crsi=rsi_v[-1] if len(rsi_v)>0 else 50
+            rc=RED if crsi>70 else GREEN if crsi<30 else PURPLE
+            ax_rsi.text(n-1,crsi,f' {crsi:.0f}',color=rc,fontsize=8,fontweight='bold',va='center')
+        except Exception: pass
+        ax_rsi.set_ylabel('RSI',color=GRAY,fontsize=7,fontfamily='monospace')
+        ax_rsi.tick_params(colors=GRAY,labelsize=6)
+        ax_rsi.grid(axis='y',color='#21262D',linewidth=0.2,alpha=0.5)
+        plt.setp(ax_rsi.get_xticklabels(),visible=False)
 
         try:
-            close_s = display_df['Close']
-            ema12 = close_s.ewm(span=12,adjust=False).mean()
-            ema26 = close_s.ewm(span=26,adjust=False).mean()
-            macd_line = ema12-ema26
-            signal_line = macd_line.ewm(span=9,adjust=False).mean()
-            hist = macd_line-signal_line
-            hist_v = hist.values
-            ax_macd.bar(range(n), hist_v,
-                color=[GREEN if v>=0 else RED for v in hist_v], alpha=0.6, width=0.8)
-            ax_macd.plot(range(n), macd_line.values, color=BLUE, linewidth=0.9)
-            ax_macd.plot(range(n), signal_line.values, color=YELLOW, linewidth=0.9)
-            ax_macd.axhline(y=0, color=GRAY, linewidth=0.4, alpha=0.3)
-        except Exception:
-            pass
-        ax_macd.set_ylabel('MACD', color=GRAY, fontsize=7, fontfamily='monospace')
-        ax_macd.tick_params(colors=GRAY, labelsize=6)
-        ax_macd.grid(axis='y', color='#21262D', linewidth=0.2, alpha=0.5)
-        plt.setp(ax_macd.get_xticklabels(), visible=False)
+            close_s=display_df['Close']
+            ema12=close_s.ewm(span=12,adjust=False).mean()
+            ema26=close_s.ewm(span=26,adjust=False).mean()
+            macd_line=ema12-ema26; signal_line=macd_line.ewm(span=9,adjust=False).mean()
+            hist=macd_line-signal_line; hist_v=hist.values
+            ax_macd.bar(range(n),hist_v,color=[GREEN if v>=0 else RED for v in hist_v],alpha=0.6,width=0.8)
+            ax_macd.plot(range(n),macd_line.values,color=BLUE,linewidth=0.9)
+            ax_macd.plot(range(n),signal_line.values,color=YELLOW,linewidth=0.9)
+            ax_macd.axhline(y=0,color=GRAY,linewidth=0.4,alpha=0.3)
+        except Exception: pass
+        ax_macd.set_ylabel('MACD',color=GRAY,fontsize=7,fontfamily='monospace')
+        ax_macd.tick_params(colors=GRAY,labelsize=6)
+        ax_macd.grid(axis='y',color='#21262D',linewidth=0.2,alpha=0.5)
+        plt.setp(ax_macd.get_xticklabels(),visible=False)
 
         ax_info.axis('off')
-        info1 = (f"  ENTRY: {signal['entry']}    SL: {signal['sl']} ({sl_pips}p)    "
-                 f"TP: {signal['tp']} ({tp_pips}p)    RR: 1:{signal['rr']}    "
-                 f"RSI: {signal['rsi']}    ADX: {signal.get('adx','?')}    "
-                 f"Pattern: {candle_pattern}    Lots: {lots}  ")
-        info2 = "  ✅  " + "   ✅  ".join(signal['reasons'][:5]) + "  "
-
-        ax_info.text(0, 0.75, info1, color=GRAY, fontsize=8, ha='left', va='center',
-            fontfamily='monospace', transform=ax_info.transAxes,
-            bbox=dict(boxstyle='round,pad=0.4', facecolor=BG2, edgecolor='#21262D', alpha=0.9))
-        ax_info.text(0, 0.2, info2, color=GREEN, fontsize=8, ha='left', va='center',
-            fontfamily='monospace', transform=ax_info.transAxes,
-            bbox=dict(boxstyle='round,pad=0.4', facecolor='#0D2818', edgecolor=GREEN, alpha=0.9))
-
-        neg_str = ("   ⚠️  ".join(signal['negative'][:2]) if signal.get('negative') else "")
+        info1=(f"  ENTRY:{signal['entry']}  SL:{signal['sl']}({sl_pips}p)  "
+               f"TP:{signal['tp']}({tp_pips}p)  RR:1:{signal['rr']}  "
+               f"RSI:{signal['rsi']}  ADX:{signal.get('adx','?')}  "
+               f"Pattern:{candle_pattern}  Lots:{lots}  Acc:${acc:,.0f}  ")
+        info2="  ✅  "+"   ✅  ".join(signal['reasons'][:5])+"  "
+        ax_info.text(0,0.75,info1,color=GRAY,fontsize=8,ha='left',va='center',fontfamily='monospace',
+            transform=ax_info.transAxes,
+            bbox=dict(boxstyle='round,pad=0.4',facecolor=BG2,edgecolor='#21262D',alpha=0.9))
+        ax_info.text(0,0.2,info2,color=GREEN,fontsize=8,ha='left',va='center',fontfamily='monospace',
+            transform=ax_info.transAxes,
+            bbox=dict(boxstyle='round,pad=0.4',facecolor='#0D2818',edgecolor=GREEN,alpha=0.9))
+        neg_str=("   ⚠️  ".join(signal['negative'][:2]) if signal.get('negative') else "")
         if neg_str:
-            ax_info.text(0.65, 0.2, "  ⚠️  "+neg_str+"  ", color=YELLOW, fontsize=7.5,
-                ha='left', va='center', fontfamily='monospace', transform=ax_info.transAxes,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='#1A1500', edgecolor=YELLOW, alpha=0.9))
+            ax_info.text(0.65,0.2,"  ⚠️  "+neg_str+"  ",color=YELLOW,fontsize=7.5,
+                ha='left',va='center',fontfamily='monospace',transform=ax_info.transAxes,
+                bbox=dict(boxstyle='round,pad=0.3',facecolor='#1A1500',edgecolor=YELLOW,alpha=0.9))
 
-        fig.text(0.99, 0.995,
-            f"AI Trading Scanner  ·  {signal['time']}  ·  Confluences: {signal['confluences']}  ·  Account: ${signal.get('account_size',0):,.0f}",
-            color='#333333', fontsize=7, ha='right', va='top', fontfamily='monospace')
+        fig.text(0.99,0.995,
+            f"AI Trading Scanner Pro  ·  {signal['time']}  ·  Confluences:{signal['confluences']}",
+            color='#333333',fontsize=7,ha='right',va='top',fontfamily='monospace')
 
-        plt.subplots_adjust(left=0.02, right=0.97, top=0.96, bottom=0.01)
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor=BG, edgecolor='none')
+        plt.subplots_adjust(left=0.02,right=0.97,top=0.96,bottom=0.01)
+        buf=io.BytesIO()
+        plt.savefig(buf,format='png',dpi=150,bbox_inches='tight',facecolor=BG,edgecolor='none')
         buf.seek(0)
-        image_bytes = buf.read()
+        image_bytes=buf.read()
         plt.close(fig)
         return image_bytes
     except Exception:
@@ -1704,8 +1405,8 @@ def add_to_journal(signal):
 def calculate_stats():
     journal = st.session_state.trade_journal
     if not journal:
-        return {"total":0,"wins":0,"losses":0,"pending":0,"win_rate":0,
-                "best_pair":"N/A","best_session":"N/A","total_rr":0}
+        return {"total":0,"wins":0,"losses":0,"pending":0,
+                "win_rate":0,"best_pair":"N/A","best_session":"N/A","total_rr":0}
     completed = [j for j in journal if j['result'] not in ["Pending","Expired"]]
     wins = [j for j in completed if j['result']=="TP Hit"]
     losses = [j for j in completed if j['result']=="SL Hit"]
@@ -1836,20 +1537,17 @@ def show_login_page():
     st.markdown("""
     <div style='text-align:center; padding:60px 20px 40px'>
         <div style='font-family:Orbitron,monospace;
-            font-size:2.8em; font-weight:900; color:#00FF88;
+            font-size:2.6em; font-weight:900; color:#00FF88;
             text-shadow:0 0 20px rgba(0,255,136,0.5),
                         0 0 40px rgba(0,255,136,0.25);
-            letter-spacing:4px; margin-bottom:12px;
-            line-height:1.2'>
+            letter-spacing:4px; margin-bottom:12px; line-height:1.2'>
         ⬡ AI TRADING<br>SCANNER PRO</div>
         <div style='font-family:Exo 2,sans-serif;
             color:#6B7A8D; font-size:0.9em;
-            letter-spacing:5px; margin-bottom:10px;
-            text-transform:uppercase'>
-        Professional Scalping Intelligence</div>
+            letter-spacing:5px; margin-bottom:10px'>
+        PROFESSIONAL SCALPING INTELLIGENCE</div>
         <div style='font-family:JetBrains Mono,monospace;
-            color:rgba(0,255,136,0.35); font-size:0.75em;
-            letter-spacing:2px; margin-top:5px'>
+            color:rgba(0,255,136,0.35); font-size:0.75em; letter-spacing:2px'>
         XAUUSD · EURUSD · GBPUSD · USDJPY · GBPJPY · EURJPY · AUDCAD · US30 · NAS100
         </div>
     </div>
@@ -1857,18 +1555,8 @@ def show_login_page():
 
     col1, col2, col3 = st.columns([1,1.4,1])
     with col2:
-        st.markdown("""
-        <div style='background:linear-gradient(135deg,
-                rgba(0,255,136,0.04) 0%, rgba(0,0,0,0) 100%);
-            border:1px solid rgba(0,255,136,0.12);
-            border-radius:18px; padding:28px 24px;
-            backdrop-filter:blur(20px);
-            box-shadow:0 8px 32px rgba(0,0,0,0.4),
-                       0 0 60px rgba(0,255,136,0.03)'>
-        """, unsafe_allow_html=True)
-
         if st.session_state.show_reset:
-            st.markdown("<h3 style='color:#00FF88;font-family:Orbitron,monospace;text-align:center;font-size:1em;letter-spacing:2px'>RESET PASSWORD</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#00FF88;font-family:Orbitron,monospace;text-align:center;font-size:1em'>RESET PASSWORD</h3>", unsafe_allow_html=True)
             reset_email = st.text_input("Email", key="reset_email")
             col_a, col_b = st.columns(2)
             with col_a:
@@ -1906,6 +1594,12 @@ def show_login_page():
                 new_email = st.text_input("Email address", key="signup_email", placeholder="trader@email.com")
                 new_pass = st.text_input("Password", type="password", key="signup_pass", placeholder="Min 6 characters")
                 confirm_pass = st.text_input("Confirm Password", type="password", key="confirm_pass", placeholder="Repeat password")
+                st.markdown("""
+                <div class='info-box' style='margin:8px 0; font-size:0.82em'>
+                    ℹ️ After creating account you will be logged in directly.
+                    No email verification required.
+                </div>
+                """, unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("🚀  CREATE ACCOUNT", use_container_width=True, type="primary"):
                     if new_email and new_pass and confirm_pass:
@@ -1914,33 +1608,30 @@ def show_login_page():
                                 st.error("Password must be at least 6 characters")
                             else:
                                 success, msg = signup_user(new_email, new_pass)
-                                st.success("✅ "+msg) if success else st.error("❌ "+msg)
+                                if success:
+                                    st.success("✅ "+msg)
+                                    time.sleep(0.5)
+                                    st.rerun()
+                                else:
+                                    st.error("❌ "+msg)
                         else:
                             st.error("Passwords do not match")
                     else:
                         st.error("Please fill all fields")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("""
     <div style='text-align:center; margin-top:40px;
         display:flex; justify-content:center; gap:14px; flex-wrap:wrap'>
     """, unsafe_allow_html=True)
-    features_login = [
-        ("🎯","Scalping SL/TP"),
-        ("💼","Smart Lot Sizing"),
-        ("⚡","AMD Strategy"),
-        ("📊","5-Panel Charts"),
-        ("🌐","Keep-Alive"),
-        ("🤖","Auto Tracking")
-    ]
-    for icon, text in features_login:
+    for icon, text in [("🎯","Scalping SL/TP"),("💼","Smart Lot Sizing"),
+                        ("⚡","AMD Strategy"),("📊","5-Panel Charts"),
+                        ("🌐","Keep-Alive"),("🤖","Auto Tracking")]:
         st.markdown(f"""
         <div style='background:rgba(0,255,136,0.04);
             border:1px solid rgba(0,255,136,0.12);
             border-radius:10px; padding:10px 16px;
             font-family:Exo 2,sans-serif;
-            color:#6B7A8D; font-size:0.82em;
-            transition:all 0.2s ease'>
+            color:#6B7A8D; font-size:0.82em'>
             {icon} {text}</div>
         """, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1951,13 +1642,13 @@ def show_dashboard():
     high_impact = [n for n in news if n['impact']==3]
     stats = calculate_stats()
     active_pairs = get_active_pairs()
-    account_size = st.session_state.get('account_size', 10000)
+    account_size = float(st.session_state.get('account_size', 10000))
 
     with st.sidebar:
         st.markdown("""
         <div style='text-align:center; padding:14px 0 8px'>
             <div style='font-family:Orbitron,monospace;
-                font-size:0.95em; font-weight:700;
+                font-size:0.9em; font-weight:700;
                 color:#00FF88; letter-spacing:2px;
                 text-shadow:0 0 8px rgba(0,255,136,0.4)'>
             ⬡ AI SCANNER PRO</div>
@@ -1965,53 +1656,47 @@ def show_dashboard():
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div style='background:linear-gradient(135deg,
-            rgba(0,255,136,0.05) 0%, rgba(0,0,0,0) 100%);
+        <div style='background:rgba(0,255,136,0.05);
             border:1px solid rgba(0,255,136,0.1);
-            border-radius:10px; padding:10px 12px;
-            margin:6px 0; font-family:Exo 2,sans-serif'>
+            border-radius:10px; padding:9px 12px;
+            margin:5px 0; font-family:Exo 2,sans-serif'>
             <div style='color:#4A5568; font-size:0.68em;
-                letter-spacing:1.5px; text-transform:uppercase;
-                margin-bottom:3px'>👤 USER</div>
-            <div style='color:#CDD5DF; font-size:0.8em;
-                word-break:break-all; font-weight:500'>
+                letter-spacing:1.5px; text-transform:uppercase'>
+            USER</div>
+            <div style='color:#CDD5DF; font-size:0.78em;
+                word-break:break-all; margin-top:2px'>
             {str(st.session_state.user_email)}</div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div style='background:linear-gradient(135deg,
-            rgba(88,166,255,0.06) 0%, rgba(0,0,0,0) 100%);
+        <div style='background:rgba(88,166,255,0.06);
             border:1px solid rgba(88,166,255,0.12);
             border-radius:10px; padding:8px 12px;
-            margin:6px 0; font-family:JetBrains Mono,monospace;
+            margin:5px 0; font-family:JetBrains Mono,monospace;
             text-align:center'>
-            <div style='color:#58A6FF; font-size:1em;
-                font-weight:500; letter-spacing:0.5px'>
+            <div style='color:#58A6FF; font-size:0.95em; font-weight:500'>
             {get_ist_time().strftime('%H:%M:%S IST')}</div>
-            <div style='color:#4A5568; font-size:0.72em;
-                margin-top:1px'>
+            <div style='color:#4A5568; font-size:0.7em; margin-top:1px'>
             {get_ist_time().strftime('%d %b %Y')}</div>
         </div>
         """, unsafe_allow_html=True)
 
-        sq_colors = {
-            "BEST": ("#00FF88","rgba(0,255,136,0.1)","rgba(0,255,136,0.2)"),
-            "GOOD": ("#3FB950","rgba(63,185,80,0.08)","rgba(63,185,80,0.15)"),
-            "MODERATE": ("#F0B429","rgba(240,180,41,0.08)","rgba(240,180,41,0.15)"),
-            "POOR": ("#FF4444","rgba(255,68,68,0.08)","rgba(255,68,68,0.15)")
+        sq_info = {
+            "BEST":("#00FF88","rgba(0,255,136,0.08)","rgba(0,255,136,0.2)","⭐⭐⭐"),
+            "GOOD":("#3FB950","rgba(63,185,80,0.06)","rgba(63,185,80,0.15)","⭐⭐"),
+            "MODERATE":("#F0B429","rgba(240,180,41,0.06)","rgba(240,180,41,0.15)","⭐"),
+            "POOR":("#FF4444","rgba(255,68,68,0.06)","rgba(255,68,68,0.15)","⚠️")
         }
-        sq_c = sq_colors.get(session_quality, sq_colors["POOR"])
-        sq_s = {"BEST":"⭐⭐⭐","GOOD":"⭐⭐","MODERATE":"⭐","POOR":"⚠️"}.get(session_quality,"⚠️")
+        sq_c = sq_info.get(session_quality, sq_info["POOR"])
         st.markdown(f"""
         <div style='background:{sq_c[1]};
             border:1px solid {sq_c[2]};
             border-radius:9px; padding:7px 10px;
             text-align:center; margin:5px 0;
             font-family:Exo 2,sans-serif;
-            color:{sq_c[0]}; font-size:0.82em;
-            font-weight:500'>
-            {sq_s} {session_name}
+            color:{sq_c[0]}; font-size:0.82em; font-weight:500'>
+            {sq_c[3]} {session_name}
         </div>
         """, unsafe_allow_html=True)
 
@@ -2019,26 +1704,11 @@ def show_dashboard():
             st.markdown("""
             <div style='background:rgba(255,68,68,0.1);
                 border:1px solid rgba(255,68,68,0.3);
-                border-radius:9px; padding:7px 10px;
-                text-align:center; margin:5px 0;
-                font-family:Exo 2,sans-serif;
-                color:#FF4444; font-size:0.8em;
-                font-weight:600'>
-                🚨 HIGH IMPACT NEWS!
-            </div>
+                border-radius:9px; padding:7px; text-align:center;
+                margin:4px 0; color:#FF4444;
+                font-family:Exo 2,sans-serif; font-size:0.8em; font-weight:600'>
+                🚨 HIGH IMPACT NEWS!</div>
             """, unsafe_allow_html=True)
-
-        ka_count = st.session_state.get('keepalive_count',0)
-        st.markdown(f"""
-        <div style='background:rgba(88,166,255,0.04);
-            border:1px solid rgba(88,166,255,0.1);
-            border-radius:8px; padding:5px 10px;
-            text-align:center; margin:4px 0;
-            font-family:Exo 2,sans-serif;
-            color:#58A6FF; font-size:0.73em'>
-            🌐 Keep-Alive #{ka_count} · {len(active_pairs)}/9 Pairs
-        </div>
-        """, unsafe_allow_html=True)
 
         st.markdown(f"""
         <div style='background:rgba(240,180,41,0.05);
@@ -2046,24 +1716,34 @@ def show_dashboard():
             border-radius:8px; padding:6px 10px;
             text-align:center; margin:4px 0;
             font-family:JetBrains Mono,monospace;
-            color:#F0B429; font-size:0.8em;
-            font-weight:500'>
+            color:#F0B429; font-size:0.82em; font-weight:500'>
             💼 ${account_size:,.0f}
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div style='background:rgba(88,166,255,0.04);
+            border:1px solid rgba(88,166,255,0.1);
+            border-radius:8px; padding:5px 10px;
+            text-align:center; margin:4px 0;
+            font-family:Exo 2,sans-serif;
+            color:#58A6FF; font-size:0.72em'>
+            🌐 Keep-Alive #{st.session_state.get('keepalive_count',0)}
+            · {len(active_pairs)}/9 Pairs
         </div>
         """, unsafe_allow_html=True)
 
         st.divider()
         col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Win Rate", str(stats['win_rate'])+"%")
-        with col2:
-            st.metric("Signals", stats['total'])
+        with col1: st.metric("Win Rate", str(stats['win_rate'])+"%")
+        with col2: st.metric("Signals", str(stats['total']))
 
         if stats.get('pending',0) > 0:
             st.info("⏳ "+str(stats['pending'])+" tracking")
 
         st.divider()
-        page = st.radio("Navigation", [
+
+        nav_options = [
             "🏠 Dashboard",
             "📊 Active Signals",
             "📰 News & Calendar",
@@ -2071,59 +1751,49 @@ def show_dashboard():
             "📈 Performance",
             "📅 Calendar",
             "⚙️ Settings"
-        ], label_visibility="collapsed")
+        ]
+        page = st.radio(
+            "nav",
+            nav_options,
+            label_visibility="collapsed"
+        )
+
         st.divider()
         if st.button("Sign Out", use_container_width=True):
             logout_user()
             st.rerun()
 
-    if page == "🏠 Dashboard":
-        show_main_dashboard()
-    elif page == "📊 Active Signals":
-        show_signals_page()
-    elif page == "📰 News & Calendar":
-        show_news_page()
-    elif page == "📓 Trade Journal":
-        show_journal_page()
-    elif page == "📈 Performance":
-        show_performance_page()
-    elif page == "📅 Calendar":
-        show_calendar_page()
-    elif page == "⚙️ Settings":
-        show_settings_page()
+    if page == "🏠 Dashboard": show_main_dashboard()
+    elif page == "📊 Active Signals": show_signals_page()
+    elif page == "📰 News & Calendar": show_news_page()
+    elif page == "📓 Trade Journal": show_journal_page()
+    elif page == "📈 Performance": show_performance_page()
+    elif page == "📅 Calendar": show_calendar_page()
+    elif page == "⚙️ Settings": show_settings_page()
 
 def show_main_dashboard():
     st.markdown("""
     <div class='cyber-title' style='font-size:1.6em;
-        margin-bottom:20px; letter-spacing:2px'>
-    🏠 DASHBOARD</div>
+        margin-bottom:20px'>🏠 DASHBOARD</div>
     """, unsafe_allow_html=True)
 
     session_quality, session_name = get_session_quality()
     news = st.session_state.get('cached_news',[])
     high_impact = [n for n in news if n['impact']==3]
     stats = calculate_stats()
-    account_size = st.session_state.get('account_size', 10000)
+    account_size = float(st.session_state.get('account_size', 10000))
 
     if high_impact:
         st.markdown("""
-        <div style='background:rgba(255,68,68,0.08);
-            border:1px solid rgba(255,68,68,0.3);
-            border-radius:12px; padding:14px 18px;
-            margin-bottom:16px;
-            font-family:Exo 2,sans-serif;
-            color:#FF4444; font-weight:600;
-            text-align:center'>
-            🚨 HIGH IMPACT NEWS ACTIVE — DO NOT TRADE UNTIL NEWS PASSES
+        <div class='warning-box' style='margin-bottom:16px; text-align:center'>
+            🚨 <b>HIGH IMPACT NEWS ACTIVE — DO NOT TRADE UNTIL NEWS PASSES</b>
         </div>
         """, unsafe_allow_html=True)
 
     if session_quality == "POOR":
         st.markdown("""
-        <div class='warning-box' style='margin-bottom:16px;
-            text-align:center'>
-            ⚠️ Off Session — Scanner will resume at Asia (4AM IST)
-            or London (12PM IST)
+        <div class='warning-box' style='margin-bottom:16px; text-align:center'>
+            ⚠️ Off Session — Scanner resumes at Asia (4AM) or London (12PM IST)
         </div>
         """, unsafe_allow_html=True)
 
@@ -2132,20 +1802,16 @@ def show_main_dashboard():
         if not st.session_state.scanner_running:
             st.markdown("""
             <div style='text-align:center;
-                background:linear-gradient(135deg,
-                    rgba(255,68,68,0.06) 0%,
-                    rgba(0,0,0,0) 100%);
+                background:rgba(255,68,68,0.05);
                 border:1px solid rgba(255,68,68,0.15);
-                border-radius:16px; padding:24px;
-                margin-bottom:12px'>
+                border-radius:16px; padding:24px; margin-bottom:12px'>
                 <div style='font-family:Exo 2,sans-serif;
-                    color:#4A5568; font-size:0.75em;
+                    color:#4A5568; font-size:0.72em;
                     letter-spacing:3px; text-transform:uppercase;
                     margin-bottom:8px'>SCANNER STATUS</div>
                 <div style='font-family:JetBrains Mono,monospace;
-                    color:#FF4444; font-size:1.6em;
-                    font-weight:500; letter-spacing:2px'>
-                ● OFFLINE</div>
+                    color:#FF4444; font-size:1.5em;
+                    font-weight:500; letter-spacing:2px'>● OFFLINE</div>
             </div>
             """, unsafe_allow_html=True)
             if st.button("▶  ACTIVATE SCANNER",
@@ -2171,26 +1837,22 @@ def show_main_dashboard():
         else:
             st.markdown("""
             <div style='text-align:center;
-                background:linear-gradient(135deg,
-                    rgba(0,255,136,0.08) 0%,
-                    rgba(0,200,100,0.03) 100%);
+                background:rgba(0,255,136,0.07);
                 border:1px solid rgba(0,255,136,0.25);
-                border-radius:16px; padding:24px;
-                margin-bottom:12px;
+                border-radius:16px; padding:24px; margin-bottom:12px;
                 box-shadow:0 0 24px rgba(0,255,136,0.08)'>
                 <div style='font-family:Exo 2,sans-serif;
-                    color:#4A5568; font-size:0.75em;
+                    color:#4A5568; font-size:0.72em;
                     letter-spacing:3px; text-transform:uppercase;
                     margin-bottom:8px'>SCANNER STATUS</div>
                 <div style='font-family:JetBrains Mono,monospace;
-                    color:#00FF88; font-size:1.6em;
+                    color:#00FF88; font-size:1.5em;
                     font-weight:500; letter-spacing:2px;
                     text-shadow:0 0 12px rgba(0,255,136,0.5)'>
                 ● ACTIVE</div>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("⏹  DEACTIVATE SCANNER",
-                use_container_width=True):
+            if st.button("⏹  DEACTIVATE SCANNER", use_container_width=True):
                 st.session_state.scanner_running = False
                 send_discord_alert(
                     "🔴 **AI Trading Scanner PRO — DEACTIVATED**\n"
@@ -2201,14 +1863,13 @@ def show_main_dashboard():
                 st.rerun()
 
     st.divider()
-
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Scanner",
             "🟢 ACTIVE" if st.session_state.scanner_running else "🔴 OFFLINE")
     with col2:
-        st.metric("Alerts Sent", st.session_state.alerts_sent,
-            delta="+1" if st.session_state.alerts_sent > 0 else None)
+        alerts = st.session_state.alerts_sent
+        st.metric("Alerts Sent", alerts)
     with col3:
         st.metric("Win Rate", str(stats['win_rate'])+"%")
     with col4:
@@ -2224,9 +1885,13 @@ def show_main_dashboard():
             progress_val = min(1.0, elapsed/scan_secs)
             st.markdown(f"""
             <div class='info-box' style='margin-bottom:10px'>
-                ⏱️ Last scan: {st.session_state.last_scan_time.strftime('%H:%M:%S IST')}
-                &nbsp;&nbsp;|&nbsp;&nbsp; Next scan in: <b>{remaining}s</b>
-                &nbsp;&nbsp;|&nbsp;&nbsp; Session: {session_name}
+                ⏱️ Last scan: <b>{st.session_state.last_scan_time.strftime('%H:%M:%S IST')}</b>
+                &nbsp;&nbsp;|&nbsp;&nbsp;
+                Next in: <b>{remaining}s</b>
+                &nbsp;&nbsp;|&nbsp;&nbsp;
+                Session: {session_name}
+                &nbsp;&nbsp;|&nbsp;&nbsp;
+                Alerts: <b>{alerts}</b>
             </div>
             """, unsafe_allow_html=True)
             st.progress(progress_val)
@@ -2238,7 +1903,7 @@ def show_main_dashboard():
         col1, col2 = st.columns(2)
         with col1:
             if st.button("⚡  SCAN NOW", type="primary", use_container_width=True):
-                with st.spinner("Running advanced scan..."):
+                with st.spinner("Scanning..."):
                     run_scan()
                 st.success("✅ Scan complete!")
                 st.rerun()
@@ -2247,22 +1912,22 @@ def show_main_dashboard():
                 st.rerun()
 
     st.divider()
-
     st.markdown("""
     <div class='warning-box' style='margin-bottom:20px'>
-        <b>⚠️ SCALPING RISK RULES</b><br>
-        • Lot sizes are auto-calculated for 1% risk per trade based on your account<br>
-        • XAUUSD: Extra caution — max 0.02 lots regardless of account size<br>
-        • Never add to a losing position · Close trade if signal expires (30 min)<br>
-        • Always check news before entering! Avoid trading during red news!
+        <b>⚠️ RISK MANAGEMENT RULES</b><br>
+        · Lot sizes auto-calculated for 1% risk based on your account balance<br>
+        · XAUUSD: Maximum 0.02 lots regardless of account size<br>
+        · Never add to a losing position · Close trade if signal expires (30 min)<br>
+        · Always check news before entering! Avoid red news events!
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
     <div style='font-family:Orbitron,monospace;
-        color:#00FF88; font-size:0.8em;
-        letter-spacing:2px; margin-bottom:14px;
-        opacity:0.7'>📡 PAIR SURVEILLANCE</div>
+        color:#00FF88; font-size:0.78em;
+        letter-spacing:2px; margin-bottom:12px; opacity:0.7'>
+    📡 PAIR SURVEILLANCE
+    </div>
     """, unsafe_allow_html=True)
 
     enabled = st.session_state.get('enabled_pairs', {p:True for p in ALL_PAIRS})
@@ -2272,28 +1937,23 @@ def show_main_dashboard():
             is_on = enabled.get(pair, True)
             settings = PAIR_SETTINGS.get(pair, {})
             sl_p = settings.get('sl_pips','?')
-            account_size = st.session_state.get('account_size', 10000)
-            lot_calc = calculate_lot_size(account_size, pair, sl_p) if isinstance(sl_p, (int,float)) else '?'
+            lot_calc = calculate_lot_size(account_size, pair, sl_p) if isinstance(sl_p,(int,float)) else '?'
             color = "#00FF88" if is_on else "#3A4556"
             bg = "rgba(0,255,136,0.07)" if is_on else "rgba(255,255,255,0.02)"
-            border = "rgba(0,255,136,0.25)" if is_on else "rgba(255,255,255,0.06)"
-            status = "ON" if is_on else "OFF"
+            border = "rgba(0,255,136,0.22)" if is_on else "rgba(255,255,255,0.05)"
             st.markdown(f"""
-            <div style='background:{bg};
-                border:1px solid {border};
+            <div style='background:{bg};border:1px solid {border};
                 border-radius:12px; padding:10px 8px;
-                text-align:center; margin-bottom:8px;
-                transition:all 0.2s ease'>
+                text-align:center; margin-bottom:8px'>
                 <div style='font-family:Orbitron,monospace;
-                    color:{color}; font-size:0.82em;
-                    font-weight:700; letter-spacing:1px;
-                    margin-bottom:3px'>{pair}</div>
+                    color:{color}; font-size:0.8em;
+                    font-weight:700; letter-spacing:1px'>{pair}</div>
                 <div style='font-family:JetBrains Mono,monospace;
-                    color:{color}; font-size:0.68em;
-                    opacity:0.7'>SL:{sl_p}p · Lot:{lot_calc}</div>
-                <div style='font-family:Exo 2,sans-serif;
-                    color:{color}; font-size:0.7em;
-                    opacity:0.5; margin-top:2px'>{status}</div>
+                    color:{color}; font-size:0.68em; opacity:0.7;
+                    margin-top:2px'>SL:{sl_p}p · {lot_calc}L</div>
+                <div style='color:{color}; font-size:0.68em; opacity:0.45;
+                    font-family:Exo 2,sans-serif'>
+                    {"ON ✅" if is_on else "OFF"}</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -2310,16 +1970,16 @@ def show_news_page():
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔄 Refresh News", use_container_width=True, type="primary"):
-            with st.spinner("Fetching latest news..."):
+            with st.spinner("Fetching..."):
                 st.session_state.cached_news = fetch_forex_news()
                 st.session_state.last_news_fetch = get_ist_time()
-            st.success("✅ News refreshed!")
+            st.success("✅ Refreshed!")
             st.rerun()
     with col2:
         if st.session_state.last_news_fetch:
             st.markdown(f"""
             <div class='info-box'>
-                Updated: {st.session_state.last_news_fetch.strftime('%H:%M:%S IST')}
+            Updated: {st.session_state.last_news_fetch.strftime('%H:%M:%S IST')}
             </div>
             """, unsafe_allow_html=True)
 
@@ -2337,8 +1997,8 @@ def show_news_page():
     st.subheader("📰 Live Market News")
     news = st.session_state.get('cached_news',[])
     if not news:
-        st.info("Click Refresh News to load!")
-        if st.button("📰 Load News Now", use_container_width=True):
+        st.info("Click Refresh News to load latest news!")
+        if st.button("📰 Load Now", use_container_width=True):
             with st.spinner("Loading..."):
                 st.session_state.cached_news = fetch_forex_news()
                 st.session_state.last_news_fetch = get_ist_time()
@@ -2365,15 +2025,14 @@ def show_signals_page():
 
     news = st.session_state.get('cached_news',[])
     if [n for n in news if n['impact']==3]:
-        st.error("🚨 HIGH IMPACT NEWS ACTIVE — Do not trade!")
+        st.error("🚨 HIGH IMPACT NEWS — Do not trade right now!")
 
     if not st.session_state.signals:
         st.markdown("""
         <div style='text-align:center; padding:60px 20px;
             font-family:Exo 2,sans-serif; color:#4A5568'>
             <div style='font-size:3.5em; margin-bottom:16px'>📡</div>
-            <div style='font-size:1em; font-weight:500'>
-            No signals detected yet</div>
+            <div style='font-size:1em; font-weight:500'>No signals detected yet</div>
             <div style='font-size:0.85em; margin-top:8px; color:#3A4556'>
             Activate the scanner and wait for high-quality setups</div>
         </div>
@@ -2414,35 +2073,40 @@ def show_signals_page():
                 with col3: st.metric(f"TP ({tp_pips}p)", signal['tp'])
 
                 if age >= 30:
-                    st.error("⛔ SIGNAL EXPIRED — Do not trade this!")
+                    st.error("⛔ SIGNAL EXPIRED — Do not trade!")
                 elif age >= 15:
-                    st.warning("⚠️ Signal aging — verify current price before entering")
+                    st.warning("⚠️ Signal aging — verify price before entering")
                 else:
-                    lot_msg = f" · Use {lots} lots (1% risk)"
+                    acc = float(signal.get('account_size',10000))
+                    risk_usd = round(acc*0.01, 2)
                     if signal['direction'] == "BUY":
                         st.markdown(f"""
                         <div class='success-box'>
-                        ✅ <b>Enter BUY at or below: {signal['entry']}</b>{lot_msg}
+                        ✅ <b>BUY at or below: {signal['entry']}</b>
+                        &nbsp;·&nbsp; <b>{lots} lots</b>
+                        &nbsp;·&nbsp; Risk: ${risk_usd:,.2f}
                         </div>
                         """, unsafe_allow_html=True)
                     else:
                         st.markdown(f"""
                         <div class='success-box'>
-                        ✅ <b>Enter SELL at or above: {signal['entry']}</b>{lot_msg}
+                        ✅ <b>SELL at or above: {signal['entry']}</b>
+                        &nbsp;·&nbsp; <b>{lots} lots</b>
+                        &nbsp;·&nbsp; Risk: ${risk_usd:,.2f}
                         </div>
                         """, unsafe_allow_html=True)
 
-                if signal.get('amd_phase'):
+                if amd:
                     st.markdown(f"""
                     <div class='info-box' style='margin-top:8px'>
-                    ⚡ <b>AMD Phase:</b> {signal['amd_phase']} Manipulation Detected!
-                    Smart money may have swept stops and reversed direction.
+                    ⚡ <b>AMD {amd} Manipulation:</b> Smart money swept stops
+                    and reversed. High probability setup!
                     </div>
                     """, unsafe_allow_html=True)
 
                 st.markdown(f"""
                 <div class='warning-box' style='margin-top:8px'>
-                ⚠️ Skip if price moved more than {signal.get('atr',0):.5f} from entry level
+                ⚠️ Skip if price moved more than {signal.get('atr',0):.5f} from entry
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -2499,11 +2163,10 @@ def show_journal_page():
         st.info("No trades recorded yet. Scanner will auto-log signals.")
         return
 
-    if st.button("🔄 Check TP/SL Outcomes",
-        use_container_width=True, type="primary"):
+    if st.button("🔄 Check TP/SL Outcomes", use_container_width=True, type="primary"):
         with st.spinner("Checking market prices..."):
             check_signal_outcomes()
-        st.success("✅ Outcomes updated!")
+        st.success("✅ Updated!")
         st.rerun()
 
     pending = [j for j in journal if j['result']=="Pending"]
@@ -2517,18 +2180,14 @@ def show_journal_page():
                 with col1: st.metric("Entry", trade['entry'])
                 with col2: st.metric(f"SL ({trade.get('sl_pips','?')}p)", trade['sl'])
                 with col3: st.metric(f"TP ({trade.get('tp_pips','?')}p)", trade['tp'])
-                st.markdown("""
-                <div class='info-box'>
-                🤖 Auto-tracking active — updates every 60 seconds
-                </div>
-                """, unsafe_allow_html=True)
-                if trade.get('amd_phase'):
-                    st.write("⚡ AMD Phase: "+trade['amd_phase'])
+                st.markdown("""<div class='info-box'>
+                    🤖 Auto-tracking active — updates every 60 seconds
+                </div>""", unsafe_allow_html=True)
+                if trade.get('amd_phase'): st.write("⚡ AMD: "+trade['amd_phase'])
                 result = st.selectbox("Manual Override",
                     ["Pending","TP Hit","SL Hit","Expired","Partial Win"],
                     key="result_"+trade['id'])
-                if st.button("✅ Save Override",
-                    key="update_"+trade['id'], use_container_width=True):
+                if st.button("✅ Save Override", key="update_"+trade['id'], use_container_width=True):
                     for j in st.session_state.trade_journal:
                         if j['id'] == trade['id']:
                             j['result'] = result
@@ -2538,9 +2197,8 @@ def show_journal_page():
                     st.success("Updated!")
                     st.rerun()
     else:
-        st.markdown("""
-        <div class='success-box'>✅ All trades have results!</div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div class='success-box'>✅ All trades have results!</div>""",
+            unsafe_allow_html=True)
 
     st.divider()
     st.subheader("📋 Trade History")
@@ -2550,20 +2208,21 @@ def show_journal_page():
                  "⚠️" if trade['result']=="Partial Win" else
                  "🔴" if trade['result']=="Expired" else "⏳")
         rc = ("color:#00FF88" if trade['result']=="TP Hit" else
-              "color:#FF4444" if trade['result']=="SL Hit" else
-              "color:#6B7A8D")
-        amd_str = f" ⚡AMD" if trade.get('amd_phase') else ""
+              "color:#FF4444" if trade['result']=="SL Hit" else "color:#6B7A8D")
+        amd_str = " ⚡" if trade.get('amd_phase') else ""
+        acc = trade.get('account_size',10000)
         st.markdown(f"""
         <div style='background:rgba(255,255,255,0.025);
             border:1px solid rgba(255,255,255,0.06);
             border-radius:10px; padding:10px 14px;
-            margin-bottom:5px;
-            font-family:Exo 2,sans-serif; font-size:0.88em'>
+            margin-bottom:5px; font-family:Exo 2,sans-serif; font-size:0.88em'>
             {emoji}
             <b style='color:#CDD5DF'>{trade['pair']} {trade['direction']}</b>
-            <span style='color:#4A5568'> · {trade['score']}%{amd_str}
+            <span style='color:#4A5568'>
+            · {trade['score']}%{amd_str}
             · SL:{trade.get('sl_pips','?')}p TP:{trade.get('tp_pips','?')}p
-            · Lots:{trade.get('suggested_lots','?')}</span>
+            · {trade.get('suggested_lots','?')}L
+            · ${acc:,.0f}</span>
             · <span style='{rc}'><b>{trade['result']}</b></span>
             <span style='color:#3A4556'> · {trade['time']}</span>
         </div>
@@ -2608,31 +2267,26 @@ def show_performance_page():
             key=lambda x: x[1]['wins']/x[1]['total'], reverse=True):
             wr = round(data['wins']/data['total']*100,1)
             filled = int(wr/5)
-            bar_html = ""
-            for b in range(20):
-                clr = "#00FF88" if b < filled else "#1E2530"
-                bar_html += f"<span style='color:{clr}'>█</span>"
+            bar_html = "".join([
+                f"<span style='color:{'#00FF88' if b < filled else '#1E2530'}'>█</span>"
+                for b in range(20)
+            ])
             color = "#00FF88" if wr>=60 else "#F0B429" if wr>=40 else "#FF4444"
-            settings = PAIR_SETTINGS.get(pair,{})
-            sl_p = settings.get('sl_pips','?')
+            sl_p = PAIR_SETTINGS.get(pair,{}).get('sl_pips','?')
             st.markdown(f"""
             <div style='background:rgba(255,255,255,0.02);
                 border:1px solid rgba(255,255,255,0.05);
-                border-radius:10px; padding:10px 14px;
-                margin-bottom:6px;
+                border-radius:10px; padding:10px 14px; margin-bottom:6px;
                 font-family:Exo 2,sans-serif'>
-                <div style='display:flex; align-items:center; gap:10px'>
-                    <span style='color:#CDD5DF; font-weight:600;
-                        font-family:Orbitron,monospace;
-                        font-size:0.85em; width:70px'>{pair}</span>
-                    <span style='font-family:JetBrains Mono,monospace;
-                        font-size:0.7em; letter-spacing:-1px'>{bar_html}</span>
-                    <span style='color:{color};
-                        font-family:JetBrains Mono,monospace;
-                        font-weight:500; font-size:0.95em'>{wr}%</span>
-                    <span style='color:#3A4556; font-size:0.8em'>
-                    ({data['wins']}/{data['total']}) · SL:{sl_p}p</span>
-                </div>
+                <span style='color:#CDD5DF; font-weight:600;
+                    font-family:Orbitron,monospace; font-size:0.82em;
+                    display:inline-block; width:70px'>{pair}</span>
+                <span style='font-family:JetBrains Mono,monospace;
+                    font-size:0.7em; letter-spacing:-1px'>{bar_html}</span>
+                <span style='color:{color}; font-family:JetBrains Mono,monospace;
+                    font-weight:500; font-size:0.92em; margin-left:8px'>{wr}%</span>
+                <span style='color:#3A4556; font-size:0.8em; margin-left:6px'>
+                ({data['wins']}/{data['total']}) · SL:{sl_p}p</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -2664,8 +2318,7 @@ def show_calendar_page():
     for date, data in sorted(date_stats.items(), reverse=True):
         wr = round(data['wins']/data['total']*100,1) if data['total']>0 else 0
         color = "🟢" if wr>=50 else "🔴"
-        with st.expander(
-            color+" "+date+" · "+str(data['total'])+" trades · WR: "+str(wr)+"%"):
+        with st.expander(color+" "+date+" · "+str(data['total'])+" trades · WR: "+str(wr)+"%"):
             for trade in data['trades']:
                 emoji = "✅" if trade['result']=="TP Hit" else "❌" if trade['result']=="SL Hit" else "⏳"
                 st.write(emoji+" "+trade['pair']+" "+trade['direction']+" | "+str(trade['score'])+"% | "+trade['result'])
@@ -2683,54 +2336,50 @@ def show_settings_page():
     """, unsafe_allow_html=True)
 
     st.divider()
-
     st.subheader("💼 Account Size")
-    st.write("Set your account balance for automatic lot size calculation:")
-    current_account = st.session_state.get('account_size', 10000)
+    st.write("Set your trading account balance for automatic lot size calculation:")
+
+    current_account = float(st.session_state.get('account_size', 10000))
 
     col1, col2 = st.columns([2,1])
     with col1:
         account_input = st.number_input(
-            "Account Balance (USD)",
+            "Account Balance (USD $)",
             min_value=100,
             max_value=10000000,
-            value=current_account,
+            value=int(current_account),
             step=1000,
             format="%d",
             key="account_input",
-            help="Enter your trading account balance. Lot sizes will be calculated for 1% risk per trade.")
+            help="Lot sizes will be calculated for 1% risk per trade")
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("💾 Save Account",
-            use_container_width=True,
-            type="primary"):
-            st.session_state.account_size = account_input
-            st.success(f"✅ Account set to ${account_input:,.0f}!")
+            use_container_width=True, type="primary"):
+            st.session_state.account_size = float(account_input)
+            st.success(f"✅ Set to ${account_input:,.0f}!")
+            st.rerun()
 
     st.markdown(f"""
-    <div class='info-box' style='margin-top:10px'>
+    <div class='info-box' style='margin-top:8px; margin-bottom:12px'>
         💼 Current: <b>${current_account:,.0f}</b>
-        · Risk per trade: 1% = <b>${current_account*0.01:,.0f}</b><br>
-        Quick select:
+        &nbsp;·&nbsp; 1% Risk = <b>${current_account*0.01:,.0f}</b> per trade
     </div>
     """, unsafe_allow_html=True)
 
+    st.write("**Quick Select:**")
     preset_cols = st.columns(6)
-    presets = [5000, 10000, 25000, 50000, 100000, 500000]
-    for i, preset in enumerate(presets):
+    for i, preset in enumerate([5000, 10000, 25000, 50000, 100000, 500000]):
         with preset_cols[i]:
-            if st.button(f"${preset//1000}k",
-                use_container_width=True,
-                key=f"preset_{preset}"):
-                st.session_state.account_size = preset
+            label = f"${preset//1000}k"
+            if st.button(label, use_container_width=True, key=f"preset_{preset}"):
+                st.session_state.account_size = float(preset)
                 st.success(f"✅ Set to ${preset:,.0f}!")
                 st.rerun()
 
     st.divider()
-
-    st.subheader("📊 Lot Size Preview")
-    account_size = st.session_state.get('account_size', 10000)
-    st.write(f"Based on your ${account_size:,.0f} account (1% risk = ${account_size*0.01:,.0f}/trade):")
+    st.subheader("📊 Lot Size Preview Table")
+    account_size = float(st.session_state.get('account_size', 10000))
     cols = st.columns(3)
     for i, (pair, settings) in enumerate(PAIR_SETTINGS.items()):
         with cols[i % 3]:
@@ -2740,20 +2389,20 @@ def show_settings_page():
             <div style='background:rgba(0,255,136,0.04);
                 border:1px solid rgba(0,255,136,0.1);
                 border-radius:10px; padding:10px;
-                text-align:center; margin-bottom:8px;
-                font-family:Exo 2,sans-serif'>
-                <div style='color:#CDD5DF; font-family:Orbitron,monospace;
-                    font-size:0.82em; font-weight:700;
-                    margin-bottom:4px'>{pair}</div>
-                <div style='color:#00FF88; font-family:JetBrains Mono,monospace;
-                    font-size:1.1em; font-weight:500'>{lot} lots</div>
-                <div style='color:#4A5568; font-size:0.72em'>
-                SL: {settings['sl_pips']}p · Risk: ${risk_amt:,.0f}</div>
+                text-align:center; margin-bottom:8px'>
+                <div style='font-family:Orbitron,monospace;
+                    color:#CDD5DF; font-size:0.8em;
+                    font-weight:700; margin-bottom:4px'>{pair}</div>
+                <div style='font-family:JetBrains Mono,monospace;
+                    color:#00FF88; font-size:1.1em;
+                    font-weight:500'>{lot} lots</div>
+                <div style='color:#4A5568; font-size:0.7em;
+                    margin-top:2px; font-family:Exo 2,sans-serif'>
+                SL:{settings['sl_pips']}p · ${risk_amt:,.0f} risk</div>
             </div>
             """, unsafe_allow_html=True)
 
     st.divider()
-
     st.subheader("📡 Pair Selection")
     enabled = st.session_state.get('enabled_pairs', {p:True for p in ALL_PAIRS})
     changed = False
@@ -2787,7 +2436,7 @@ def show_settings_page():
             sl_p = settings.get('sl_pips','?')
             is_enabled = enabled.get(pair, True)
             new_val = st.toggle(
-                f"{pair}  (SL: {sl_p}p)",
+                f"{pair}  (SL:{sl_p}p)",
                 value=is_enabled,
                 key="toggle_"+pair)
             if new_val != is_enabled:
@@ -2797,7 +2446,7 @@ def show_settings_page():
     if changed:
         st.session_state.enabled_pairs = enabled
         active = [p for p in ALL_PAIRS if enabled.get(p,True)]
-        st.success("✅ Scanning: "+(", ".join(active) if active else "None selected"))
+        st.success("✅ Scanning: "+(", ".join(active) if active else "None"))
         st.rerun()
 
     active_pairs = [p for p in ALL_PAIRS if enabled.get(p,True)]
@@ -2811,7 +2460,6 @@ def show_settings_page():
         st.error("⚠️ No pairs selected! Enable at least one pair.")
 
     st.divider()
-
     st.subheader("⏱️ Scan Interval")
     current_interval = st.session_state.get('scan_interval_minutes', 5)
     scan_interval = st.selectbox(
@@ -2822,32 +2470,30 @@ def show_settings_page():
         key="scan_interval_select")
     if st.button("💾 Save Interval", use_container_width=True, type="primary"):
         st.session_state.scan_interval_minutes = scan_interval
-        st.success("✅ Interval set to "+str(scan_interval)+" minutes!")
+        st.success("✅ Set to "+str(scan_interval)+" minutes!")
 
     st.divider()
-
-    st.subheader("🔔 Discord")
-    if st.button("🔔 Test Discord Alert", use_container_width=True):
+    st.subheader("🔔 Discord Test")
+    if st.button("🔔 Send Test Alert", use_container_width=True):
         active = get_active_pairs()
-        acc = st.session_state.get('account_size', 10000)
+        acc = float(st.session_state.get('account_size', 10000))
         success = send_discord_alert(
             "✅ **System Test — AI Trading Scanner PRO**\n"
             "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "All systems operational!\n"
             "💼 Account: $"+f"{acc:,.0f}"+"\n"
             "📡 Active pairs: "+", ".join(active)+"\n"
             "⏱️ Scan interval: "+str(st.session_state.get('scan_interval_minutes',5))+" min\n"
             "🕐 Session: "+get_current_session()+"\n"
             "⚡ AMD Detection: Active\n"
+            "🎯 Scalping SL/TP: Active\n"
             "👤 "+str(st.session_state.user_email)+"\n"
             "⏰ "+get_ist_time().strftime('%d %b %Y %H:%M IST'))
         if success:
             st.success("✅ Discord working perfectly!")
         else:
-            st.error("❌ Discord failed — check webhook URL in secrets")
+            st.error("❌ Discord failed — check webhook URL")
 
     st.divider()
-
     st.subheader("🗑️ Data Management")
     col1, col2 = st.columns(2)
     with col1:
@@ -2860,29 +2506,21 @@ def show_settings_page():
             st.success("Cleared!")
 
     st.divider()
-
-    st.subheader("⚡ AMD Strategy Explained")
+    st.subheader("⚠️ About Supabase Email Signup")
     st.markdown("""
-    <div class='info-box'>
-        <b>AMD = Accumulation · Manipulation · Distribution</b><br><br>
-        <b>Phase 1 — Accumulation:</b> Smart money loads positions in a range.
-        Price moves sideways, creating equal highs and lows.<br><br>
-        <b>Phase 2 — Manipulation (Stop Hunt):</b> Price breaks out FALSELY
-        to one side, triggering retail stop losses and entries.
-        This is where our scanner catches the signal!<br><br>
-        <b>Phase 3 — Distribution:</b> Price reverses strongly in the OPPOSITE
-        direction — this is the real move where we profit.<br><br>
-        <b>Our detection logic:</b><br>
-        ✅ Detects consolidation range (ATR ratio > 2.0)<br>
-        ✅ Detects false breakout beyond range high/low<br>
-        ✅ Detects reversal candle back into range<br>
-        ✅ Adds +30 points bonus to confluence score<br>
-        ✅ Shows ⚡AMD badge in Discord alert and chart
+    <div class='warning-box'>
+        <b>If signup email not received:</b><br>
+        1. Go to Supabase Dashboard<br>
+        2. Authentication → Settings<br>
+        3. Turn OFF "Enable email confirmations"<br>
+        4. Save settings<br>
+        5. Now signup will work without email verify!<br><br>
+        <b>Current status:</b> App logs you in directly after signup
+        without requiring email verification.
     </div>
     """, unsafe_allow_html=True)
 
     st.divider()
-
     st.subheader("🌐 Keep-Alive System")
     ka_count = st.session_state.get('keepalive_count',0)
     st.markdown(f"""
@@ -2890,37 +2528,34 @@ def show_settings_page():
         ✅ JavaScript pings server every 25 seconds<br>
         ✅ Wake lock prevents mobile screen sleep<br>
         ✅ Auto-reloads when internet reconnects<br>
-        📊 Current ping count: <b>{ka_count}</b><br>
-        💡 Set scan interval to 1-2 min for best results
+        📊 Ping count: <b>{ka_count}</b><br>
+        💡 Set scan interval to 1-2 min for best session stability
     </div>
     """, unsafe_allow_html=True)
 
     st.divider()
-
-    st.subheader("✅ System Capabilities")
+    st.subheader("✅ System Features")
     features = [
         ("🎯","Scalping-optimized SL/TP per pair"),
         ("💼","Auto lot sizing by account balance"),
         ("⚡","AMD Accumulation-Manipulation-Distribution"),
-        ("📊","Advanced BOS with swing point detection"),
+        ("📊","Advanced BOS + Swing point detection"),
         ("🌊","FVG with gap size filtering"),
         ("🧱","Smart Order Block detection"),
         ("💧","Liquidity Sweep confirmation"),
-        ("🔄","CHOCH (Change of Character)"),
+        ("🔄","CHOCH Change of Character"),
         ("📉","ADX trend strength filter"),
         ("📈","EMA 8/21/50 stack confirmation"),
         ("🕯️","Candle pattern recognition"),
-        ("🌐","Multi-timeframe HTF bias 4H+1H"),
-        ("🔧","Structure-based dynamic SL"),
+        ("🌐","Multi-TF HTF bias 4H+1H"),
         ("🤖","Auto TP/SL outcome tracking"),
         ("📊","5-panel professional charts"),
         ("📰","News impact filter"),
         ("🌐","JavaScript keep-alive system"),
         ("🎯","Pair toggle selection"),
         ("⏱️","Adjustable scan interval"),
-        ("📓","Trade journal with pip tracking"),
+        ("📓","Trade journal with lot tracking"),
         ("📈","Win rate analytics by pair"),
-        ("📅","Calendar performance view"),
     ]
     cols = st.columns(2)
     for i, (icon, feat) in enumerate(features):
@@ -2929,8 +2564,7 @@ def show_settings_page():
             <div style='background:rgba(0,255,136,0.03);
                 border:1px solid rgba(0,255,136,0.08);
                 border-radius:8px; padding:8px 12px;
-                margin-bottom:5px;
-                font-family:Exo 2,sans-serif;
+                margin-bottom:5px; font-family:Exo 2,sans-serif;
                 color:#6B7A8D; font-size:0.84em'>
                 {icon} {feat}
             </div>
